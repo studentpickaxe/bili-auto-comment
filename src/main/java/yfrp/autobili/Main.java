@@ -1,24 +1,26 @@
-package yfrp;
+package yfrp.autobili;
 
-import org.openqa.selenium.*;
+import org.openqa.selenium.Cookie;
+import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.io.*;
 import java.time.Duration;
-import java.util.List;
 import java.util.Set;
 
 public class Main {
 
-    private static final int timeout = 10;
-    private static final String COOKIE_FILE = "bilibili_cookies.txt";
-    private static final String searchWord = "斩杀线";
+    public static final int timeout = 10;
+    public static final String COOKIE_FILE = "bilibili_cookies.txt";
+    public static final String searchWord = "斩杀线";
     private static WebDriver driver;
 
     // 保存 Cookies 到文件
-    public static void saveCookies(WebDriver driver, String filepath) {
+    public static void saveCookies(WebDriver driver, String filepath) throws InterruptedException {
+
+        driver.get("https://www.bilibili.com");
+        Thread.sleep(500);
 
         try {
             File file = new File(filepath);
