@@ -1,17 +1,135 @@
 package yfrp;
 
-// TIP 要<b>运行</b>代码，请按 <shortcut actionId="Run"/> 或
-// 点击装订区域中的 <icon src="AllIcons.Actions.Execute"/> 图标。
-public class Main {
-    static void main() {
-        // TIP 当文本光标位于高亮显示的文本处时按 <shortcut actionId="ShowIntentionActions"/>
-        // 查看 IntelliJ IDEA 建议如何修正。
-        IO.println(String.format("Hello and welcome!"));
+import org.openqa.selenium.*;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 
-        for (int i = 1; i <= 5; i++) {
-            // TIP 按 <shortcut actionId="Debug"/> 开始调试代码。我们已经设置了一个 <icon src="AllIcons.Debugger.Db_set_breakpoint"/> 断点
-            // 但您始终可以通过按 <shortcut actionId="ToggleLineBreakpoint"/> 添加更多断点。
-            IO.println("i = " + i);
+import java.io.*;
+import java.time.Duration;
+import java.util.List;
+import java.util.Set;
+
+public class Main {
+
+    private static final int timeout = 10;
+    private static final String COOKIE_FILE = "bilibili_cookies.txt";
+    private static final String searchWord = "斩杀线";
+    private static WebDriver driver;
+
+    // 保存 Cookies 到文件
+    public static void saveCookies(WebDriver driver, String filepath) {
+
+        try {
+            File file = new File(filepath);
+            FileWriter fileWriter = new FileWriter(file);
+            BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
+
+            Set<Cookie> cookies = driver.manage().getCookies();
+            for (Cookie cookie : cookies) {
+                bufferedWriter.write(cookie.getName() + ";" +
+                                     cookie.getValue() + ";" +
+                                     cookie.getDomain() + ";" +
+                                     cookie.getPath() + ";" +
+                                     cookie.getExpiry() + ";" +
+                                     cookie.isSecure());
+                bufferedWriter.newLine();
+            }
+            bufferedWriter.close();
+            fileWriter.close();
+            System.out.println("Cookies 保存成功！");
+
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+
+    }
+
+    // 从文件加载 Cookies
+    public static void loadCookies(WebDriver driver, String filepath) {
+
+        try {
+            File file = new File(filepath);
+            FileReader fileReader = new FileReader(file);
+            BufferedReader bufferedReader = new BufferedReader(fileReader);
+
+            String line;
+            while ((line = bufferedReader.readLine()) != null) {
+                String[] token = line.split(";");
+
+                Cookie.Builder cookieBuilder = new Cookie.Builder(token[0], token[1])
+                        .domain(token[2])
+                        .path(token[3])
+                        .isSecure(Boolean.parseBoolean(token[5]));
+
+                if (token[4] != null && !token[4].equals("null")) {
+                    // 处理过期时间
+                }
+
+                driver.manage().addCookie(cookieBuilder.build());
+            }
+            bufferedReader.close();
+            fileReader.close();
+            System.out.println("Cookies 加载成功！");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+
+
+    static void main() {
+
+        driver = new ChromeDriver();
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(timeout));
+
+        try {
+            // 打开 bilibili
+            driver.get("https://www.bilibili.com");
+
+            // 加载 cookies
+            loadCookies(driver, COOKIE_FILE);
+            driver.navigate().refresh();
+            Thread.sleep(1000);
+
+            // 搜索
+            driver.get("https://search.bilibili.com/all?keyword=" + searchWord + "&from_source=webtop_search&spm_id_from=333.1007&search_source=5&order=pubdate");
+
+
+            System.out.println("\n浏览器将保持打开状态");
+            System.out.println("👉 按 Enter 键【保存 Cookies 并退出】");
+            System.out.println("👉 直接关闭浏览器【不保存 Cookies】");
+
+            // 监听浏览器是否被手动关闭
+            Thread browserMonitor = new Thread(() -> {
+                while (true) {
+                    try {
+                        driver.getWindowHandles();
+                        Thread.sleep(1000);
+                    } catch (Exception e) {
+                        System.out.println("\n检测到浏览器被手动关闭，不保存 Cookies，程序退出");
+                        System.exit(0);
+                    }
+                }
+            });
+            browserMonitor.setDaemon(true);
+            browserMonitor.start();
+
+            // 等待用户按 Enter
+            System.in.read();
+
+            // 保存 cookies
+            System.out.println("\n用户选择正常退出，正在保存 Cookies...");
+            saveCookies(driver, COOKIE_FILE);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (driver != null) {
+                driver.quit();
+            }
+        }
+
     }
 }
