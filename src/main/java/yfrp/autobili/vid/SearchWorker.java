@@ -72,11 +72,18 @@ public class SearchWorker implements Runnable {
         Thread.sleep(3000);
 
         var bvids = AutoSearch.extractBVIDs(driver);
-        LOGGER.info("关键词 '{}' 搜索到 {} 个视频", keyword, bvids.size());
+        LOGGER.info("根据关键词 '{}' 搜索到 {} 个视频", keyword, bvids.size());
 
         bvids.stream()
                 .filter(bv -> !commented.hasVid(bv))
                 .forEach(toComment::add);
+
+        // 保存
+        toComment.saveVideos();
+        LOGGER.info(
+                "已保存视频列表 | 待评论: {}, 已评论: {}",
+                toComment.size(), commented.size()
+        );
     }
 
     private String nextKeyword() {

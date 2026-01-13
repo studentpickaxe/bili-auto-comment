@@ -8,12 +8,10 @@ import org.slf4j.LoggerFactory;
 import yfrp.autobili.browser.ChromeOptionUtil;
 import yfrp.autobili.comment.CommentWorker;
 import yfrp.autobili.config.Config;
-import yfrp.autobili.vid.AutoSearch;
 import yfrp.autobili.vid.BiliApi;
 import yfrp.autobili.vid.SearchWorker;
 import yfrp.autobili.vid.VidPool;
 
-import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -22,14 +20,12 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class AutoBili {
     private static final Logger LOGGER = LoggerFactory.getLogger(AutoBili.class);
 
     private static final VidPool BVIDS_TO_COMMENT = new VidPool("bvids_to_comment.txt");
     private static final VidPool BVIDS_COMMENTED = new VidPool("bvids_commented.txt");
-    private static final AtomicInteger COMMENT_COUNT = new AtomicInteger(0);
 
     private final ScheduledExecutorService scheduler;
     private final CountDownLatch shutdownLatch;
@@ -47,15 +43,20 @@ public class AutoBili {
         this.scheduler = Executors.newScheduledThreadPool(2, this::createThread);
         this.shutdownLatch = new CountDownLatch(1);
 
-        this.commentWorker = new CommentWorker(config, config.autoCommentInstance());
+        this.commentWorker = new CommentWorker(
+                config,
+                config.autoCommentInstance(),
+                BVIDS_TO_COMMENT,
+                BVIDS_COMMENTED
+        );
         this.commentThread = new Thread(commentWorker, "Comment-Worker");
+
         this.searchWorker = config.isSearchEnabled()
                             ? new SearchWorker(config, BVIDS_TO_COMMENT, BVIDS_COMMENTED)
                             : null;
         this.searchThread = searchWorker != null
                             ? new Thread(searchWorker, "Search-Worker")
                             : null;
-
 
         // 注册 JVM 关闭钩子
         Runtime.getRuntime().addShutdownHook(new Thread(this::cleanup, "Shutdown-Hook"));
@@ -96,7 +97,7 @@ public class AutoBili {
         try {
             BVIDS_TO_COMMENT.loadVideos();
             BVIDS_COMMENTED.loadVideos();
-            LOGGER.info("已加载待评论视频 {} 个，已评论视频 {} 个",
+            LOGGER.info("已加载视频 | 待评论: {}, 已评论: {}",
                     BVIDS_TO_COMMENT.size(), BVIDS_COMMENTED.size());
         } catch (IOException e) {
             LOGGER.error("加载视频列表时出错", e);
@@ -211,19 +212,6 @@ public class AutoBili {
         LOGGER.info("执行清理操作...");
     }
 
-    // 搜索任务
-    private static class SearchTask implements Runnable {
-        @Override
-        public void run() {
-            try {
-                LOGGER.debug("开始执行视频搜索任务");
-                AutoSearch.search(BVIDS_TO_COMMENT, BVIDS_COMMENTED);
-            } catch (Exception e) {
-                LOGGER.error("搜索视频时出错", e);
-            }
-        }
-    }
-
     // 评论任务
     private class CommentTask implements Runnable {
         @Override
@@ -243,10 +231,10 @@ public class AutoBili {
                 return;
             }
 
-            LOGGER.info("开始评论视频 {}", bvid);
-
             // 检查发布日期
             if (!checkPubDate(bvid)) {
+                // 跳过视频
+                commentWorker.skip(bvid);
                 return;
             }
 
@@ -265,7 +253,6 @@ public class AutoBili {
                 if (pubDate < config.getMinPubdate()) {
                     LOGGER.info("视频 {} 发布日期 {} 早于设定的最早发布日期 {}，已跳过该视频",
                             bvid, formatTimestamp(pubDate), formatTimestamp(config.getMinPubdate()));
-                    afterComment(bvid);
                     return false;
                 }
             } catch (IOException | InterruptedException e) {
@@ -274,16 +261,6 @@ public class AutoBili {
             }
             return true;
         }
-    }
-
-    private static void afterComment(@Nonnull String bvid) {
-        BVIDS_TO_COMMENT.remove(bvid);
-        BVIDS_TO_COMMENT.saveVideos();
-        BVIDS_COMMENTED.add(bvid);
-        BVIDS_COMMENTED.saveVideos();
-
-        LOGGER.info("已保存视频列表 - 待评论: {}, 已评论: {}",
-                BVIDS_TO_COMMENT.size(), BVIDS_COMMENTED.size());
     }
 
     private static String formatTimestamp(long timestampSeconds) {

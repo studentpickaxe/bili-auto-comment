@@ -103,7 +103,7 @@ public class AutoComment {
                     commentSection
             );
 
-            LOGGER.debug("已滚动到评论区");
+            // LOGGER.debug("已滚动到评论区");
 
         } catch (Exception e) {
             LOGGER.warn("滚动到评论区失败，尝试备选方案");

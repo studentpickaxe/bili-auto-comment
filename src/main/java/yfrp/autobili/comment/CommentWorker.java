@@ -7,34 +7,45 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import yfrp.autobili.browser.ChromeOptionUtil;
 import yfrp.autobili.config.Config;
+import yfrp.autobili.vid.VidPool;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class CommentWorker implements Runnable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CommentWorker.class);
 
+    private static final AtomicInteger commentCount = new AtomicInteger(0);
+
     private final BlockingQueue<String> queue = new LinkedBlockingQueue<>();
     private final Config config;
 
-    private volatile boolean running = true;
+    private final VidPool toComment;
+    private final VidPool commented;
+
     private volatile boolean accepting = true;
     private final WebDriver driver;
     private final AutoComment commenter;
 
-    public CommentWorker(Config config, AutoComment commenter) {
+    public CommentWorker(Config config,
+                         AutoComment commenter,
+                         VidPool toComment,
+                         VidPool commented) {
+
         this.config = config;
         this.commenter = commenter;
+        this.toComment = toComment;
+        this.commented = commented;
 
-        var options = new ChromeOptions();
+        ChromeOptions options = new ChromeOptions();
         ChromeOptionUtil.makeLightweight(options);
         ChromeOptionUtil.setProfile(options, "comment");
 
         driver = new ChromeDriver(options);
         driver.get("https://www.bilibili.com");
-        LOGGER.info("评论浏览器已启动");
     }
 
     // 提交评论任务
@@ -49,6 +60,23 @@ public class CommentWorker implements Runnable {
     // 停止
     public void shutdown() {
         accepting = false;
+    }
+
+    public void skip(String bvid) {
+        afterComment(bvid);
+    }
+
+    private void afterComment(String bvid) {
+        toComment.remove(bvid);
+        toComment.saveVideos();
+
+        commented.add(bvid);
+        commented.saveVideos();
+
+        LOGGER.info(
+                "视频 {} 已处理完成 | 待评论: {}, 已评论: {}",
+                bvid, toComment.size(), commented.size()
+        );
     }
 
     @Override
@@ -76,10 +104,15 @@ public class CommentWorker implements Runnable {
                 LOGGER.info("开始评论视频 {}", bvid);
 
                 try {
+                    // 执行评论
                     commenter.commentAt(driver, bvid);
+                    afterComment(bvid);
+                    LOGGER.info("已评论 {} 个视频", commentCount.addAndGet(1));
+
                 } catch (InterruptedException e) {
                     LOGGER.info("评论线程收到停止信号，结束当前评论");
                     break;
+
                 } catch (Exception e) {
                     LOGGER.error("评论视频 {} 时异常", bvid, e);
                 }
@@ -94,6 +127,7 @@ public class CommentWorker implements Runnable {
             }
         } finally {
             LOGGER.info("评论线程已结束");
+            LOGGER.info("已评论 {} 个视频", commentCount.get());
         }
     }
 
