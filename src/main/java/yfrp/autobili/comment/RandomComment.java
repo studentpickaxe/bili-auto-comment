@@ -25,6 +25,43 @@ public class RandomComment {
     private final Set<String> templates;
     private final HashMap<String, Set<String>> vars;
 
+    public RandomComment(Map<String, Object> config) {
+
+        this.templates = new HashSet<>();
+        this.vars = new HashMap<>();
+
+        // 解析 templates
+        Object templatesObj = config.get("templates");
+        if (templatesObj instanceof List<?> templatesList) {
+            for (Object template : templatesList) {
+                if (template != null) {
+                    templates.add(template.toString());
+                }
+            }
+        }
+
+        // 解析 vars
+        Object varsObj = config.get("vars");
+        if (varsObj instanceof Map) {
+            var varsMap = (Map<String, Object>) varsObj;
+            for (Map.Entry<String, Object> entry : varsMap.entrySet()) {
+                String varName = entry.getKey();
+                Object valuesObj = entry.getValue();
+
+                if (valuesObj instanceof List<?> valuesList) {
+                    Set<String> values = new HashSet<>();
+                    for (Object value : valuesList) {
+                        if (value != null) {
+                            values.add(value.toString());
+                        }
+                    }
+                    vars.put(varName, values);
+                }
+            }
+        }
+
+    }
+
     public RandomComment(String rcfStr) {
         this.templates = new HashSet<>();
         this.vars = new HashMap<>();
@@ -102,7 +139,7 @@ public class RandomComment {
         // 替换所有 :varName; 格式的占位符
         Pattern pattern = Pattern.compile(":([^;]+);");
         Matcher matcher = pattern.matcher(template);
-        StringBuffer result = new StringBuffer();
+        StringBuilder result = new StringBuilder();
 
         while (matcher.find()) {
             String varName = matcher.group(1);
@@ -138,7 +175,7 @@ public class RandomComment {
         Matcher nestedMatcher = nestedPattern.matcher(selectedValue);
 
         if (nestedMatcher.find()) {
-            StringBuffer resolvedValue = new StringBuffer();
+            StringBuilder resolvedValue = new StringBuilder();
             Set<String> newVisited = new HashSet<>(visitedVars);
             newVisited.add(varName);
 
