@@ -28,7 +28,7 @@ public class AutoBili {
     private static final AtomicInteger COMMENT_COUNT = new AtomicInteger(0);
 
     private final ScheduledExecutorService scheduler;
-    private final ExecutorService commentExecutor;
+    // private final ExecutorService commentExecutor;
     private final CountDownLatch shutdownLatch;
 
     private final CommentWorker commentWorker;
@@ -40,7 +40,7 @@ public class AutoBili {
         this.config = config;
 
         this.scheduler = Executors.newScheduledThreadPool(2, this::createThread);
-        this.commentExecutor = Executors.newCachedThreadPool(this::createThread);
+        // this.commentExecutor = Executors.newCachedThreadPool(this::createThread);
         this.shutdownLatch = new CountDownLatch(1);
 
         this.commentWorker = new CommentWorker(config, config.autoCommentInstance());
@@ -143,36 +143,33 @@ public class AutoBili {
     }
 
     private void shutdown() {
-        LOGGER.info("开始关闭服务...");
+        LOGGER.info("准备关闭服务...");
 
-        // 停止调度器，不再接受新任务
-        scheduler.shutdown();
+        // 1. 停止调度器（不再产生新任务）
+        scheduler.shutdownNow();
 
-        try {
-            // 等待当前任务完成
-            if (!scheduler.awaitTermination(30, TimeUnit.SECONDS)) {
-                scheduler.shutdownNow();
-            }
-        } catch (InterruptedException e) {
-            scheduler.shutdownNow();
-            Thread.currentThread().interrupt();
+        // 2. 通知评论线程：不再接新评论
+        if (commentWorker != null) {
+            commentWorker.shutdown();
         }
 
-        // 关闭评论执行器
-        commentExecutor.shutdown();
-        try {
-            if (!commentExecutor.awaitTermination(30, TimeUnit.SECONDS)) {
-                commentExecutor.shutdownNow();
+        // 3. 等评论线程把“当前评论 + 队列剩余”跑完
+        if (commentThread != null) {
+            try {
+                commentThread.join(); // ← 不设 timeout，等自然结束
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
-        } catch (InterruptedException e) {
-            commentExecutor.shutdownNow();
-            Thread.currentThread().interrupt();
         }
 
-        LOGGER.info("已结束运行");
-        LOGGER.info("总计评论 {} 个视频", COMMENT_COUNT.get());
+        // 4. 评论线程已结束，安全关闭浏览器
+        if (commentWorker != null) {
+            commentWorker.close();
+        }
+
         LOGGER.info("服务已关闭");
     }
+
 
     private void cleanup() {
         LOGGER.info("执行清理操作...");
@@ -281,15 +278,17 @@ public class AutoBili {
 
         try {
             LOGGER.info("正在打开浏览器...");
-            LOGGER.info("请在登录完成后按 Enter 以保存登录状态和网站设置");
+            LOGGER.info("请登录并进行网站设置（例如自动播放、分辨率）");
             LOGGER.info("请勿直接关闭浏览器！");
+            LOGGER.info("按下 Enter 保存登录状态和网站设置");
 
             driver.get("https://www.bilibili.com");
             IO.readln();
 
             Thread.sleep(1000);
 
-            LOGGER.info("登录状态已保存");
+            LOGGER.info("已保存登陆状态和网站设置");
+            LOGGER.info("可将配置中的 'login.enable' 设为 NO 以跳过此步骤");
         } catch (InterruptedException e) {
             LOGGER.error("登录时出错", e);
             Thread.currentThread().interrupt();
