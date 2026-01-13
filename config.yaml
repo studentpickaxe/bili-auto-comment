@@ -4,18 +4,19 @@ login:
 
 
 search:
-  enable: NO
-  interval: 300
+  enable: YES
+  interval: 120
   keywords:
     - 斩杀线
     - 殖
     - 公知
     - NGO
     - 劳a
+    - 反贼
 
 
 comment:
-  interval: 15
+  interval: 20
   min_pubdate:
     year:   2026
     month:  1
@@ -23,9 +24,6 @@ comment:
     hour:   18
     minute: 0
     second: 0
-  max_time_since_pub:
-    day:    1
-    hour:   0
 
   templates:
     - :wins;:stickers;

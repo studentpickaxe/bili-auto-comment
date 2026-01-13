@@ -10,6 +10,7 @@ import yfrp.autobili.comment.CommentWorker;
 import yfrp.autobili.config.Config;
 import yfrp.autobili.vid.AutoSearch;
 import yfrp.autobili.vid.BiliApi;
+import yfrp.autobili.vid.SearchWorker;
 import yfrp.autobili.vid.VidPool;
 
 import javax.annotation.Nonnull;
@@ -17,7 +18,10 @@ import java.io.IOException;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.concurrent.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class AutoBili {
@@ -28,11 +32,12 @@ public class AutoBili {
     private static final AtomicInteger COMMENT_COUNT = new AtomicInteger(0);
 
     private final ScheduledExecutorService scheduler;
-    // private final ExecutorService commentExecutor;
     private final CountDownLatch shutdownLatch;
 
     private final CommentWorker commentWorker;
     private final Thread commentThread;
+    private final SearchWorker searchWorker;
+    private final Thread searchThread;
 
     private final Config config;
 
@@ -40,11 +45,17 @@ public class AutoBili {
         this.config = config;
 
         this.scheduler = Executors.newScheduledThreadPool(2, this::createThread);
-        // this.commentExecutor = Executors.newCachedThreadPool(this::createThread);
         this.shutdownLatch = new CountDownLatch(1);
 
         this.commentWorker = new CommentWorker(config, config.autoCommentInstance());
         this.commentThread = new Thread(commentWorker, "Comment-Worker");
+        this.searchWorker = config.isSearchEnabled()
+                            ? new SearchWorker(config, BVIDS_TO_COMMENT, BVIDS_COMMENTED)
+                            : null;
+        this.searchThread = searchWorker != null
+                            ? new Thread(searchWorker, "Search-Worker")
+                            : null;
+
 
         // 注册 JVM 关闭钩子
         Runtime.getRuntime().addShutdownHook(new Thread(this::cleanup, "Shutdown-Hook"));
@@ -93,20 +104,14 @@ public class AutoBili {
         }
 
         this.commentThread.start();
+        if (searchThread != null) {
+            searchThread.start();
+        }
+
     }
 
     private void scheduleJobs() {
-        // 搜索
-        if (config.isSearchEnabled()) {
-            scheduler.scheduleAtFixedRate(
-                    new SearchTask(),
-                    0,
-                    config.getSearchInterval(),
-                    TimeUnit.SECONDS
-            );
-        }
 
-        // 评论
         scheduler.scheduleAtFixedRate(
                 new CommentTask(),
                 0,
@@ -114,7 +119,11 @@ public class AutoBili {
                 TimeUnit.SECONDS
         );
 
-        LOGGER.info("已启动定时任务: 搜索[间隔 {}s], 评论[间隔 {}s]", config.getSearchInterval(), config.getCommentInterval());
+        LOGGER.info(
+                "任务已启动: 搜索[间隔 {}s], 评论[间隔 {}s]",
+                config.getSearchInterval(),
+                config.getCommentInterval()
+        );
     }
 
     private void listenForStopCommand() {
@@ -148,26 +157,53 @@ public class AutoBili {
         // 1. 停止调度器（不再产生新任务）
         scheduler.shutdownNow();
 
-        // 2. 通知评论线程：不再接新评论
-        if (commentWorker != null) {
-            commentWorker.shutdown();
+        // 2. 停止搜索线程
+        if (searchWorker != null) {
+            searchWorker.shutdown();   // 不再接新搜索
+        }
+        if (searchThread != null) {
+            searchThread.interrupt();  // 打断 sleep
         }
 
-        // 3. 等评论线程把“当前评论 + 队列剩余”跑完
+        // 3. 停止评论线程（优雅）
+        if (commentWorker != null) {
+            commentWorker.shutdown();  // 不再接新评论
+        }
         if (commentThread != null) {
+            commentThread.interrupt(); // 打断 poll / sleep
+        }
+
+        // 4. 等待搜索线程结束
+        if (searchThread != null) {
             try {
-                commentThread.join(); // ← 不设 timeout，等自然结束
+                searchThread.join();
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
         }
 
-        // 4. 评论线程已结束，安全关闭浏览器
-        if (commentWorker != null) {
-            commentWorker.close();
+        // 5. 等待评论线程结束（等当前评论完成）
+        if (commentThread != null) {
+            try {
+                commentThread.join();  // 不设 timeout，确保收尾
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
 
-        LOGGER.info("服务已关闭");
+        // 6. 安全关闭浏览器（线程已退出）
+        try {
+            if (searchWorker != null) {
+                searchWorker.close();
+            }
+            if (commentWorker != null) {
+                commentWorker.close();
+            }
+        } catch (Exception e) {
+            LOGGER.debug("关闭浏览器时出现异常", e);
+        }
+
+        LOGGER.info("服务已完全关闭");
     }
 
 
@@ -238,20 +274,6 @@ public class AutoBili {
             }
             return true;
         }
-
-        // private void sendComment(String bvid) {
-        //     try {
-        //         if (config.autoCommentInstance().commentAt(bvid)) {
-        //             int count = COMMENT_COUNT.incrementAndGet();
-        //             LOGGER.info("成功评论视频 {}，当前进度: {}", bvid, count);
-        //             afterComment(bvid);
-        //         } else {
-        //             LOGGER.warn("评论视频 {} 失败", bvid);
-        //         }
-        //     } catch (Exception e) {
-        //         LOGGER.error("发送评论时出错: {}", bvid, e);
-        //     }
-        // }
     }
 
     private static void afterComment(@Nonnull String bvid) {

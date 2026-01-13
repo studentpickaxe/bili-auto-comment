@@ -56,7 +56,7 @@ public class CommentWorker implements Runnable {
         try {
             while (true) {
 
-                // 停止条件：不再接任务 且 队列已空
+                // 不再接任务 且 队列空 → 正常退出
                 if (!accepting && queue.isEmpty()) {
                     break;
                 }
@@ -65,6 +65,7 @@ public class CommentWorker implements Runnable {
                 try {
                     bvid = queue.poll(1, TimeUnit.SECONDS);
                 } catch (InterruptedException e) {
+                    // stop 触发，直接检查退出条件
                     continue;
                 }
 
@@ -72,16 +73,23 @@ public class CommentWorker implements Runnable {
                     continue;
                 }
 
+                LOGGER.info("开始评论视频 {}", bvid);
+
                 try {
-                    LOGGER.info("开始评论视频 {}", bvid);
                     commenter.commentAt(driver, bvid);
-
-                    // ② 评论间隔（即使 stop 了，也等这一次）
-                    Thread.sleep(config.getCommentInterval() * 1000L);
-
-                } catch (InterruptedException _) {
+                } catch (InterruptedException e) {
+                    LOGGER.info("评论线程收到停止信号，结束当前评论");
+                    break;
                 } catch (Exception e) {
-                    LOGGER.error("评论线程异常", e);
+                    LOGGER.error("评论视频 {} 时异常", bvid, e);
+                }
+
+                // 评论间隔（可被 stop 打断）
+                try {
+                    Thread.sleep(config.getCommentInterval() * 1000L);
+                } catch (InterruptedException e) {
+                    // stop 信号 → 直接退出
+                    break;
                 }
             }
         } finally {

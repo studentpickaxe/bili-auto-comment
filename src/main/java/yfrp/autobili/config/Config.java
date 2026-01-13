@@ -30,7 +30,7 @@ public class Config {
             
             search:
               enable: true
-              interval: 300
+              interval: 120
               keywords:
                 - 斩杀线
                 - 殖
@@ -47,9 +47,6 @@ public class Config {
                 hour:   0
                 minute: 0
                 second: 0
-              max_time_since_pub:
-                day:    1
-                hour:   0
             
               templates:
                 - ${wins}${stickers}
@@ -107,7 +104,6 @@ public class Config {
     private static final int minCommentInterval = 20;
     private final int commentInterval;
     private final int minPubdate;
-    private final int maxTimeSincePub;
 
     private final AutoComment autoCommentInstance;
 
@@ -148,12 +144,6 @@ public class Config {
         this.minPubdate = (int) minPubDateTime
                 .atZone(ZoneId.systemDefault())
                 .toEpochSecond();
-
-        // 解析 max_time_since_pub - 转换为秒数
-        Map<String, Object> maxTimeMap = getMap(commentMap, "max_time_since_pub");
-        this.maxTimeSincePub =
-                getInt(maxTimeMap, "day", 1) * 86400 +
-                getInt(maxTimeMap, "hour", 0) * 3600;
 
         this.autoCommentInstance = new AutoComment(new RandomComment(commentMap));
     }
@@ -208,10 +198,6 @@ public class Config {
 
     public int getMinPubdate() {
         return minPubdate;
-    }
-
-    public int getMaxTimeSincePub() {
-        return maxTimeSincePub;
     }
 
     public static Config getInstance() {

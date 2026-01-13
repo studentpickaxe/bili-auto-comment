@@ -1,6 +1,9 @@
 package yfrp.autobili.comment;
 
-import org.openqa.selenium.*;
+import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.slf4j.Logger;
@@ -19,28 +22,24 @@ public class AutoComment {
         this.commentFormat = commentFormat;
     }
 
-    public boolean commentAt(WebDriver driver, String bvid) {
+    public boolean commentAt(WebDriver driver, String bvid)
+            throws InterruptedException {
+
         String vidLink = "https://www.bilibili.com/video/" + bvid + "/";
 
-        try {
-            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(TIMEOUT));
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(TIMEOUT));
 
-            driver.get(vidLink);
+        driver.get(vidLink);
 
-            wait.until(ExpectedConditions.presenceOfElementLocated(By.tagName("bili-comments")));
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.tagName("bili-comments")));
 
-            scrollToCommentSection(driver);
-            Thread.sleep(1500);
+        scrollToCommentSection(driver);
+        Thread.sleep(1500);
 
-            String comment = commentFormat.generate();
-            LOGGER.info("发送评论: {}", comment);
+        String comment = commentFormat.generate();
+        LOGGER.info("发送评论: {}", comment);
 
-            return sendCommentWithSelenium(driver, wait, comment);
-
-        } catch (Exception e) {
-            LOGGER.error("评论失败 {}", bvid, e);
-            return false;
-        }
+        return sendCommentWithSelenium(driver, wait, comment);
     }
 
 
@@ -89,27 +88,6 @@ public class AutoComment {
     }
 
     /**
-     * 展开 Shadow Root
-     */
-    private SearchContext expandShadowRoot(WebDriver driver, WebElement element) {
-        try {
-            JavascriptExecutor js = (JavascriptExecutor) driver;
-            Object shadowRoot = js.executeScript("return arguments[0].shadowRoot", element);
-
-            if (shadowRoot instanceof SearchContext) {
-                return (SearchContext) shadowRoot;
-            }
-
-            LOGGER.warn("Shadow Root 不是有效的 SearchContext");
-            return null;
-
-        } catch (Exception e) {
-            LOGGER.error("展开 Shadow Root 失败", e);
-            return null;
-        }
-    }
-
-    /**
      * 滚动到评论区
      */
     private void scrollToCommentSection(WebDriver driver) {
@@ -138,24 +116,4 @@ public class AutoComment {
         }
     }
 
-    // /**
-    //  * 测试方法
-    //  */
-    // static void main() {
-    //     AutoComment autoComment = new AutoComment(new RandomComment(
-    //             """
-    //             :wins;:stickers;
-    //             :stickers;:wins;
-    //             {{{{{{
-    //             stickers={:sticker;':sticker;:sticker;}
-    //             sticker={[星星眼]'[打call]'[滑稽]'[妙啊]'[嗑瓜子]'[呲牙]'[大笑]'[偷笑]'[鼓掌]'[嘘声]'[捂眼]'[惊喜]'[哈欠]'[抓狂]}
-    //             wins={:win;':won;}
-    //             win={赢'🥇赢'赢🥇'✌赢}
-    //             won={赢了'✌赢了'赢了✌'🥇赢了}
-    //             """));
-    //
-    //     // 测试评论
-    //     boolean success = autoComment.commentAt("BV1pTr8BsEg2");
-    //     System.out.println("评论" + (success ? "成功" : "失败"));
-    // }
 }
