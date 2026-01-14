@@ -34,7 +34,7 @@ public class AutoComment {
         wait.until(ExpectedConditions.presenceOfElementLocated(By.tagName("bili-comments")));
 
         scrollToCommentSection(driver);
-        Thread.sleep(1500);
+        Thread.sleep(1000);
 
         String comment = commentFormat.generate();
         LOGGER.info("发送评论: {}", comment);
@@ -58,16 +58,33 @@ public class AutoComment {
 
             // 2. 通过 JavaScript 访问 Shadow DOM 并输入评论
             String script =
-                    "const comments = arguments[0];" +
-                    "const shadowRoot = comments.shadowRoot;" +
-                    "const commentBox = shadowRoot.querySelector('bili-comment-box');" +
-                    "const textarea = commentBox.shadowRoot.querySelector('bili-comment-rich-textarea');" +
-                    "const editor = textarea.shadowRoot.querySelector('.brt-editor');" +
-                    "editor.textContent = arguments[1];" +
-                    "editor.dispatchEvent(new Event('input', { bubbles: true }));";
+                    """
+                    const comments = arguments[0];
+                    if (!comments || !comments.shadowRoot) return false;
+                    
+                    const shadowRoot = comments.shadowRoot;
+                    const commentBox = shadowRoot.querySelector('bili-comment-box');
+                    if (!commentBox || !commentBox.shadowRoot) return false;
+                    
+                    const textarea = commentBox.shadowRoot.querySelector('bili-comment-rich-textarea');
+                    if (!textarea || !textarea.shadowRoot) return false;
+                    
+                    const editor = textarea.shadowRoot.querySelector('.brt-editor');
+                    if (!editor) return false;
+                    
+                    editor.textContent = arguments[1];
+                    editor.dispatchEvent(new Event('input', { bubbles: true }));
+                    return true;
+                    """;
 
-            js.executeScript(script, biliComments, commentText);
-            Thread.sleep(1000);
+            for (int i = 0; i < 3; i++) {
+                var success = (boolean) js.executeScript(script, biliComments, commentText);
+                if (success) {
+                    break;
+                }
+                Thread.sleep(1000);
+            }
+            Thread.sleep(500);
 
             // 3. 点击发布按钮
             String clickScript =
@@ -81,7 +98,7 @@ public class AutoComment {
 
             return true;
 
-        } catch (InterruptedException e) {
+        } catch (Exception e) {
             LOGGER.error("评论失败", e);
         }
         return false;

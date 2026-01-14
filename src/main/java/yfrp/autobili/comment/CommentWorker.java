@@ -192,9 +192,10 @@ public class CommentWorker implements Runnable {
 
                 try {
                     LOGGER.info("开始评论视频 {}", bvid);
-                    commenter.commentAt(driver, bvid);
-                    afterComment(bvid, check.pubdate());
-                    LOGGER.info("已评论 {} 个视频", commentCount.addAndGet(1));
+                    if (commenter.commentAt(driver, bvid)) {
+                        afterComment(bvid, check.pubdate());
+                        LOGGER.info("已评论 {} 个视频", commentCount.addAndGet(1));
+                    }
                 } catch (Exception e) {
                     if (accepting) {
                         LOGGER.error("评论视频 {} 时异常", bvid, e);
