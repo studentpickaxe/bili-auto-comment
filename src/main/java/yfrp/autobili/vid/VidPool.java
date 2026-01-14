@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
+import java.util.function.Predicate;
 
 public class VidPool {
 
@@ -27,6 +28,10 @@ public class VidPool {
                 throw new RuntimeException(e);
             }
         }
+    }
+
+    public boolean removeIf(Predicate<String> filter) {
+        return vidPool.removeIf(filter);
     }
 
     @Nullable
@@ -58,7 +63,8 @@ public class VidPool {
     }
 
     public boolean hasVid(String bvid) {
-        return vidPool.contains(bvid);
+        return vidPool.stream()
+                .anyMatch(line -> line.startsWith(bvid));
     }
 
     public void saveVideos() {

@@ -30,7 +30,6 @@ public class ChromeOptionUtil {
                 "--disable-infobars",
                 "--disable-features=VizDisplayCompositor",
                 "--disable-blink-features=AutomationControlled",
-                "--window-size=1280,720",
                 "--silent"
         );
 

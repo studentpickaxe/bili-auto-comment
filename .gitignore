@@ -44,3 +44,7 @@ bvids_to_comment.txt
 bvids_commented.txt
 
 chrome-profiles/
+
+logs/
+
+src/test/

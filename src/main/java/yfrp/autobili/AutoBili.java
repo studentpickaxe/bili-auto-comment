@@ -8,14 +8,10 @@ import org.slf4j.LoggerFactory;
 import yfrp.autobili.browser.ChromeOptionUtil;
 import yfrp.autobili.comment.CommentWorker;
 import yfrp.autobili.config.Config;
-import yfrp.autobili.vid.BiliApi;
 import yfrp.autobili.vid.SearchWorker;
 import yfrp.autobili.vid.VidPool;
 
 import java.io.IOException;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -59,7 +55,10 @@ public class AutoBili {
                             : null;
 
         // 注册 JVM 关闭钩子
-        Runtime.getRuntime().addShutdownHook(new Thread(this::cleanup, "Shutdown-Hook"));
+        Runtime.getRuntime().addShutdownHook(new Thread(
+                () -> LOGGER.info("\n\n"),
+                "Shutdown-Hook"
+        ));
     }
 
     private Thread createThread(Runnable r) {
@@ -155,62 +154,29 @@ public class AutoBili {
     private void shutdown() {
         LOGGER.info("准备关闭服务...");
 
-        // 1. 停止调度器（不再产生新任务）
         scheduler.shutdownNow();
 
-        // 2. 停止搜索线程
         if (searchWorker != null) {
-            searchWorker.shutdown();   // 不再接新搜索
+            searchWorker.shutdown();
         }
-        if (searchThread != null) {
-            searchThread.interrupt();  // 打断 sleep
-        }
-
-        // 3. 停止评论线程（优雅）
         if (commentWorker != null) {
-            commentWorker.shutdown();  // 不再接新评论
-        }
-        if (commentThread != null) {
-            commentThread.interrupt(); // 打断 poll / sleep
+            commentWorker.shutdown();
         }
 
-        // 4. 等待搜索线程结束
-        if (searchThread != null) {
-            try {
-                searchThread.join();
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }
-
-        // 5. 等待评论线程结束（等当前评论完成）
-        if (commentThread != null) {
-            try {
-                commentThread.join();  // 不设 timeout，确保收尾
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }
-
-        // 6. 安全关闭浏览器（线程已退出）
         try {
-            if (searchWorker != null) {
-                searchWorker.close();
+            if (searchThread != null) {
+                searchThread.join(2000);
             }
-            if (commentWorker != null) {
-                commentWorker.close();
+            if (commentThread != null) {
+                commentThread.join(2000);
             }
-        } catch (Exception e) {
-            LOGGER.debug("关闭浏览器时出现异常", e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
 
-        LOGGER.info("服务已完全关闭");
+        LOGGER.info("服务已关闭");
     }
 
-
-    private void cleanup() {
-        LOGGER.info("执行清理操作...");
-    }
 
     // 评论任务
     private class CommentTask implements Runnable {
@@ -231,42 +197,10 @@ public class AutoBili {
                 return;
             }
 
-            // 检查发布日期
-            if (!checkPubDate(bvid)) {
-                // 跳过视频
-                commentWorker.skip(bvid);
-                return;
-            }
-
             // 评论
             commentWorker.submit(bvid);
         }
 
-        private boolean checkPubDate(String bvid) {
-            // 2000-01-01 00:00:00
-            if (config.getMinPubdate() < 946656000) {
-                return true;
-            }
-
-            try {
-                long pubDate = BiliApi.getVidPubDate(bvid);
-                if (pubDate < config.getMinPubdate()) {
-                    LOGGER.info("视频 {} 发布日期 {} 早于设定的最早发布日期 {}，已跳过该视频",
-                            bvid, formatTimestamp(pubDate), formatTimestamp(config.getMinPubdate()));
-                    return false;
-                }
-            } catch (IOException | InterruptedException e) {
-                LOGGER.error("获取视频 {} 发布日期时出错", bvid, e);
-                return false;
-            }
-            return true;
-        }
-    }
-
-    private static String formatTimestamp(long timestampSeconds) {
-        return Instant.ofEpochSecond(timestampSeconds)
-                .atZone(ZoneId.systemDefault())
-                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
     }
 
     private static void login() {

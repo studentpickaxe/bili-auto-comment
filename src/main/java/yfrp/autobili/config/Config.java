@@ -15,6 +15,9 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 public class Config {
@@ -32,10 +35,8 @@ public class Config {
               enable: true
               interval: 120
               keywords:
-                - 斩杀线
                 - 殖
                 - 公知
-                - NGO
             
             
             comment:
@@ -98,12 +99,13 @@ public class Config {
     // 搜索
     private final boolean searchEnabled;
     private final int searchInterval;
-    private final String[] searchKeywords;
+    private final List<String> searchKeywords;
 
     // 评论
     private static final int minCommentInterval = 20;
     private final int commentInterval;
     private final int minPubdate;
+    private final int maxTimeSincePubdate;
 
     private final AutoComment autoCommentInstance;
 
@@ -118,11 +120,13 @@ public class Config {
         Map<String, Object> searchMap = getMap(config, "search");
         this.searchEnabled = getBoolean(searchMap, "enable", true);
         this.searchInterval = getInt(searchMap, "interval", 300);
-        this.searchKeywords = getStringArray(
+        var keywords = new ArrayList<>(getStringArray(
                 searchMap,
                 "keywords",
-                new String[]{"斩杀线", "殖", "公知", "NGO"}
-        );
+                new String[]{"殖", "公知"}
+        ));
+        Collections.shuffle(keywords);
+        this.searchKeywords = keywords;
 
         // 评论
         Map<String, Object> commentMap = getMap(config, "comment");
@@ -131,7 +135,6 @@ public class Config {
                 minCommentInterval
         );
 
-        // 解析 min_pubdate - 转换为时间戳（秒）
         Map<String, Object> minPubMap = getMap(commentMap, "min_pubdate");
         int year = getInt(minPubMap, "year", 2000);
         int month = getInt(minPubMap, "month", 1);
@@ -139,36 +142,50 @@ public class Config {
         int hour = getInt(minPubMap, "hour", 0);
         int minute = getInt(minPubMap, "minute", 0);
         int second = getInt(minPubMap, "second", 0);
-        LocalDateTime minPubDateTime = LocalDateTime.of(year, month, day, hour, minute, second);
-
-        this.minPubdate = (int) minPubDateTime
+        LocalDateTime minPubdateTime = LocalDateTime.of(year, month, day, hour, minute, second);
+        this.minPubdate = (int) minPubdateTime
                 .atZone(ZoneId.systemDefault())
                 .toEpochSecond();
+
+        Map<String, Object> maxSincePub = getMap(commentMap, "max_time_since_pubdate");
+        this.maxTimeSincePubdate = getInt(maxSincePub, "day", 1) * 86400 +
+                                   getInt(maxSincePub, "hour", 0) * 3600;
 
         this.autoCommentInstance = new AutoComment(new RandomComment(commentMap));
     }
 
     @SuppressWarnings("unchecked")
-    private static Map<String, Object> getMap(Map<String, Object> map, String key) {
+    private static Map<String, Object> getMap(Map<String, Object> map,
+                                              String key) {
+
         return (Map<String, Object>) MapUtils.getMap(map, key, Map.of());
     }
 
-    private static int getInt(Map<String, Object> map, String key, int defaultVal) {
+    private static int getInt(Map<String, Object> map,
+                              String key,
+                              int defaultVal) {
+
         Object v = map.get(key);
         return NumberUtils.toInt(String.valueOf(v), defaultVal);
     }
 
-    private static boolean getBoolean(Map<String, Object> map, String key, boolean defaultVal) {
+    private static boolean getBoolean(Map<String, Object> map,
+                                      String key,
+                                      boolean defaultVal) {
+
         Object v = map.get(key);
         return v == null ? defaultVal : BooleanUtils.toBoolean(v.toString());
     }
 
-    private static String[] getStringArray(Map<String, Object> map, String key, String[] defaultVal) {
+    private static List<String> getStringArray(Map<String, Object> map,
+                                               String key,
+                                               String[] defaultVal) {
+
         Object v = map.get(key);
         if (v instanceof java.util.List<?> list) {
-            return list.stream().map(String::valueOf).toArray(String[]::new);
+            return list.stream().map(String::valueOf).toList();
         }
-        return defaultVal;
+        return List.of(defaultVal);
     }
 
 
@@ -184,7 +201,7 @@ public class Config {
         return searchInterval;
     }
 
-    public String[] getSearchKeywords() {
+    public List<String> getSearchKeywords() {
         return searchKeywords;
     }
 
@@ -198,6 +215,10 @@ public class Config {
 
     public int getMinPubdate() {
         return minPubdate;
+    }
+
+    public int getMaxTimeSincePubdate() {
+        return maxTimeSincePubdate;
     }
 
     public static Config getInstance() {
