@@ -82,6 +82,7 @@ public class AutoComment {
                 if (success) {
                     break;
                 }
+                LOGGER.warn("第 {} 次评论失败！1s 后重试...", i);
                 Thread.sleep(1000);
             }
             Thread.sleep(500);
