@@ -54,6 +54,8 @@ public class SearchWorker implements Runnable {
 
         try {
             while (accepting) {
+                config.loadConfig();
+
                 String keyword = nextKeyword();
                 try {
                     searchOnce(keyword);

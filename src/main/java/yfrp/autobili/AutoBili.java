@@ -124,6 +124,7 @@ public class AutoBili {
                 config.getSearchInterval(),
                 config.getCommentInterval()
         );
+        LOGGER.info("配置的部分参数可修改后自动重载");
     }
 
     private void listenForStopCommand() {

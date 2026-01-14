@@ -16,14 +16,18 @@ public class AutoComment {
     private static final Logger LOGGER = LoggerFactory.getLogger(AutoComment.class);
     private static final int TIMEOUT = 15;
 
-    private final RandomComment commentFormat;
+    private RandomComment commentFormat = null;
 
-    public AutoComment(RandomComment commentFormat) {
+    public void setCommentFormat(RandomComment commentFormat) {
         this.commentFormat = commentFormat;
     }
 
     public boolean commentAt(WebDriver driver, String bvid)
             throws InterruptedException {
+
+        if (commentFormat == null){
+            throw new IllegalStateException("Comment format not set");
+        }
 
         String vidLink = "https://www.bilibili.com/video/" + bvid + "/";
 

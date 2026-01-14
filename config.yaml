@@ -1,11 +1,15 @@
 login:
   # 第一次使用请登录
+  # 无法重载
   enable: NO
 
 
 search:
+  # 无法重载
   enable: YES
+
   interval: 20
+
   keywords:
     - 斩杀线
     - 殖

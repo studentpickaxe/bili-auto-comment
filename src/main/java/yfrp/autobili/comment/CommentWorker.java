@@ -66,7 +66,6 @@ public class CommentWorker implements Runnable {
             return;
         }
 
-        // 使用 offer 而不是无限等待,避免阻塞
         if (!queue.offer(bvid)) {
             LOGGER.warn("评论队列已满,跳过视频 {}", bvid);
         }
@@ -165,8 +164,11 @@ public class CommentWorker implements Runnable {
     @Override
     public void run() {
         this.workerThread = Thread.currentThread();
+
         try {
-            while (accepting || !queue.isEmpty()) {
+            while (accepting) {
+                config.loadConfig();
+
                 if (!accepting) {
                     break;
                 }

@@ -94,65 +94,21 @@ public class Config {
 
 
     // 登录
-    private final boolean loginEnabled;
+    private boolean loginEnabled;
 
     // 搜索
-    private final boolean searchEnabled;
-    private final int searchInterval;
-    private final List<String> searchKeywords;
+    private boolean searchEnabled;
+    private int searchInterval;
+    private final List<String> searchKeywords = new ArrayList<>();
 
     // 评论
     private static final int minCommentInterval = 20;
-    private final int commentInterval;
-    private final int minPubdate;
-    private final int maxTimeSincePubdate;
+    private int commentInterval;
+    private int minPubdate;
+    private int maxTimeSincePubdate;
 
-    private final AutoComment autoCommentInstance;
+    private final AutoComment autoCommentInstance = new AutoComment();
 
-
-    private Config(Map<String, Object> config) {
-
-        // 登录
-        Map<String, Object> loginMap = getMap(config, "login");
-        this.loginEnabled = getBoolean(loginMap, "enable", false);
-
-        // 搜索
-        Map<String, Object> searchMap = getMap(config, "search");
-        this.searchEnabled = getBoolean(searchMap, "enable", true);
-        this.searchInterval = getInt(searchMap, "interval", 300);
-        var keywords = new ArrayList<>(getStringArray(
-                searchMap,
-                "keywords",
-                new String[]{"殖", "公知"}
-        ));
-        Collections.shuffle(keywords);
-        this.searchKeywords = keywords;
-
-        // 评论
-        Map<String, Object> commentMap = getMap(config, "comment");
-        this.commentInterval = Math.max(
-                getInt(commentMap, "interval", 30),
-                minCommentInterval
-        );
-
-        Map<String, Object> minPubMap = getMap(commentMap, "min_pubdate");
-        int year = getInt(minPubMap, "year", 2000);
-        int month = getInt(minPubMap, "month", 1);
-        int day = getInt(minPubMap, "day", 1);
-        int hour = getInt(minPubMap, "hour", 0);
-        int minute = getInt(minPubMap, "minute", 0);
-        int second = getInt(minPubMap, "second", 0);
-        LocalDateTime minPubdateTime = LocalDateTime.of(year, month, day, hour, minute, second);
-        this.minPubdate = (int) minPubdateTime
-                .atZone(ZoneId.systemDefault())
-                .toEpochSecond();
-
-        Map<String, Object> maxSincePub = getMap(commentMap, "max_time_since_pubdate");
-        this.maxTimeSincePubdate = getInt(maxSincePub, "day", 1) * 86400 +
-                                   getInt(maxSincePub, "hour", 0) * 3600;
-
-        this.autoCommentInstance = new AutoComment(new RandomComment(commentMap));
-    }
 
     @SuppressWarnings("unchecked")
     private static Map<String, Object> getMap(Map<String, Object> map,
@@ -222,10 +178,12 @@ public class Config {
     }
 
     public static Config getInstance() {
-        return new Config(loadConfig());
+        var config = new Config();
+        config.loadConfig();
+        return config;
     }
 
-    private static Map<String, Object> loadConfig() {
+    public void loadConfig() {
         Path path = Path.of(configFile);
         Yaml yaml = new Yaml();
 
@@ -242,14 +200,59 @@ public class Config {
                 throw new RuntimeException(e);
             }
 
-            return yaml.load(defaultConfig);
+            parseConfig(yaml.load(defaultConfig));
         }
 
         try (InputStream in = Files.newInputStream(path)) {
-            return yaml.load(in);
+            parseConfig(yaml.load(in));
         } catch (IOException e) {
-            return yaml.load(defaultConfig);
+            parseConfig(yaml.load(defaultConfig));
         }
+    }
+
+    private void parseConfig(Map<String, Object> config) {
+
+        // 登录
+        Map<String, Object> loginMap = getMap(config, "login");
+        this.loginEnabled = getBoolean(loginMap, "enable", false);
+
+        // 搜索
+        Map<String, Object> searchMap = getMap(config, "search");
+        this.searchEnabled = getBoolean(searchMap, "enable", true);
+        this.searchInterval = getInt(searchMap, "interval", 300);
+        var keywords = new ArrayList<>(getStringArray(
+                searchMap,
+                "keywords",
+                new String[]{"殖", "公知"}
+        ));
+        Collections.shuffle(keywords);
+        this.searchKeywords.clear();
+        this.searchKeywords.addAll(keywords);
+
+        // 评论
+        Map<String, Object> commentMap = getMap(config, "comment");
+        this.commentInterval = Math.max(
+                getInt(commentMap, "interval", 30),
+                minCommentInterval
+        );
+
+        Map<String, Object> minPubMap = getMap(commentMap, "min_pubdate");
+        int year = getInt(minPubMap, "year", 2000);
+        int month = getInt(minPubMap, "month", 1);
+        int day = getInt(minPubMap, "day", 1);
+        int hour = getInt(minPubMap, "hour", 0);
+        int minute = getInt(minPubMap, "minute", 0);
+        int second = getInt(minPubMap, "second", 0);
+        LocalDateTime minPubdateTime = LocalDateTime.of(year, month, day, hour, minute, second);
+        this.minPubdate = (int) minPubdateTime
+                .atZone(ZoneId.systemDefault())
+                .toEpochSecond();
+
+        Map<String, Object> maxSincePub = getMap(commentMap, "max_time_since_pubdate");
+        this.maxTimeSincePubdate = getInt(maxSincePub, "day", 1) * 86400 +
+                                   getInt(maxSincePub, "hour", 0) * 3600;
+
+        this.autoCommentInstance.setCommentFormat(new RandomComment(commentMap));
     }
 
 }
