@@ -3,6 +3,8 @@ package yfrp.autobili.config;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.math.NumberUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
 import yfrp.autobili.comment.AutoComment;
 import yfrp.autobili.comment.RandomComment;
@@ -18,6 +20,8 @@ import java.time.ZoneId;
 import java.util.*;
 
 public class Config {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(Config.class);
 
     private static final String configFile = "config.yaml";
 
@@ -99,7 +103,7 @@ public class Config {
             """;
 
 
-    private final Random random = new Random();
+    private final long SEED = System.currentTimeMillis();
 
 
     // 登录
@@ -117,6 +121,99 @@ public class Config {
     private int autoClearDelay;
 
     private final AutoComment autoCommentInstance = new AutoComment();
+
+
+    public Config(Path path) {
+        var first = Files.notExists(path);
+        this.loginEnabled = first;
+        if (first) {
+            LOGGER.info("检测到第一次启动，请按提示完成浏览器初始化");
+        }
+    }
+
+    public static Config getInstance() {
+        Path path = Path.of(configFile);
+        var config = new Config(path);
+        config.loadConfig(path);
+        return config;
+    }
+
+    public void loadConfig() {
+        loadConfig(Path.of(configFile));
+    }
+
+    private void loadConfig(Path path) {
+        Yaml yaml = new Yaml();
+
+        if (Files.notExists(path)) {
+            // 创建默认配置文件
+            try {
+                Files.writeString(
+                        path,
+                        defaultConfig,
+                        StandardCharsets.UTF_8,
+                        StandardOpenOption.CREATE_NEW
+                );
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+
+            parseConfig(yaml.load(defaultConfig));
+        }
+
+        try (InputStream in = Files.newInputStream(path)) {
+            parseConfig(yaml.load(in));
+        } catch (IOException e) {
+            parseConfig(yaml.load(defaultConfig));
+        }
+    }
+
+    private void parseConfig(Map<String, Object> config) {
+
+        // 登录
+        Map<String, Object> loginMap = getMap(config, "login");
+        if (getBoolean(loginMap, "enable", false)) {
+            this.loginEnabled = true;
+        }
+
+        // 搜索
+        Map<String, Object> searchMap = getMap(config, "search");
+        this.searchEnabled = getBoolean(searchMap, "enable", true);
+        this.searchInterval = getInt(searchMap, "interval", 300);
+        var keywords = new ArrayList<>(getStringArray(
+                searchMap,
+                "keywords",
+                new String[]{"殖", "公知"}
+        ));
+        Collections.shuffle(keywords, new Random(SEED));
+        this.searchKeywords.clear();
+        this.searchKeywords.addAll(keywords);
+
+        // 评论
+        Map<String, Object> commentMap = getMap(config, "comment");
+        this.commentInterval = Math.max(
+                getInt(commentMap, "interval", 30),
+                minCommentInterval
+        );
+
+        Map<String, Object> minPubMap = getMap(commentMap, "min_pubdate");
+        int year = getInt(minPubMap, "year", 2000);
+        int month = getInt(minPubMap, "month", 1);
+        int day = getInt(minPubMap, "day", 1);
+        int hour = getInt(minPubMap, "hour", 0);
+        int minute = getInt(minPubMap, "minute", 0);
+        int second = getInt(minPubMap, "second", 0);
+        LocalDateTime minPubdateTime = LocalDateTime.of(year, month, day, hour, minute, second);
+        this.minPubdate = (int) minPubdateTime
+                .atZone(ZoneId.systemDefault())
+                .toEpochSecond();
+
+        Map<String, Object> autoClearMap = getMap(commentMap, "auto_clear_after_time");
+        this.autoClearDelay = getInt(autoClearMap, "day", 1) * 86400 +
+                              getInt(autoClearMap, "hour", 0) * 3600;
+
+        this.autoCommentInstance.setCommentFormat(new RandomComment(commentMap));
+    }
 
 
     @SuppressWarnings("unchecked")
@@ -184,84 +281,6 @@ public class Config {
 
     public int getAutoClearDelay() {
         return autoClearDelay;
-    }
-
-    public static Config getInstance() {
-        var config = new Config();
-        config.loadConfig();
-        return config;
-    }
-
-    public void loadConfig() {
-        Path path = Path.of(configFile);
-        Yaml yaml = new Yaml();
-
-        if (Files.notExists(path)) {
-            // 创建默认配置文件
-            try {
-                Files.writeString(
-                        path,
-                        defaultConfig,
-                        StandardCharsets.UTF_8,
-                        StandardOpenOption.CREATE_NEW
-                );
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-
-            parseConfig(yaml.load(defaultConfig));
-        }
-
-        try (InputStream in = Files.newInputStream(path)) {
-            parseConfig(yaml.load(in));
-        } catch (IOException e) {
-            parseConfig(yaml.load(defaultConfig));
-        }
-    }
-
-    private void parseConfig(Map<String, Object> config) {
-
-        // 登录
-        Map<String, Object> loginMap = getMap(config, "login");
-        this.loginEnabled = getBoolean(loginMap, "enable", false);
-
-        // 搜索
-        Map<String, Object> searchMap = getMap(config, "search");
-        this.searchEnabled = getBoolean(searchMap, "enable", true);
-        this.searchInterval = getInt(searchMap, "interval", 300);
-        var keywords = new ArrayList<>(getStringArray(
-                searchMap,
-                "keywords",
-                new String[]{"殖", "公知"}
-        ));
-        Collections.shuffle(keywords, random);
-        this.searchKeywords.clear();
-        this.searchKeywords.addAll(keywords);
-
-        // 评论
-        Map<String, Object> commentMap = getMap(config, "comment");
-        this.commentInterval = Math.max(
-                getInt(commentMap, "interval", 30),
-                minCommentInterval
-        );
-
-        Map<String, Object> minPubMap = getMap(commentMap, "min_pubdate");
-        int year   = getInt(minPubMap, "year",   2000);
-        int month  = getInt(minPubMap, "month",  1);
-        int day    = getInt(minPubMap, "day",    1);
-        int hour   = getInt(minPubMap, "hour",   0);
-        int minute = getInt(minPubMap, "minute", 0);
-        int second = getInt(minPubMap, "second", 0);
-        LocalDateTime minPubdateTime = LocalDateTime.of(year, month, day, hour, minute, second);
-        this.minPubdate = (int) minPubdateTime
-                .atZone(ZoneId.systemDefault())
-                .toEpochSecond();
-
-        Map<String, Object> autoClearMap = getMap(commentMap, "auto_clear_after_time");
-        this.autoClearDelay = getInt(autoClearMap, "day", 1) * 86400 +
-                              getInt(autoClearMap, "hour", 0) * 3600;
-
-        this.autoCommentInstance.setCommentFormat(new RandomComment(commentMap));
     }
 
 }

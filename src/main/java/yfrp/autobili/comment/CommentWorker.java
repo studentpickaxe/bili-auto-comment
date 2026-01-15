@@ -125,7 +125,7 @@ public class CommentWorker implements Runnable {
         commented.saveVideos();
 
         LOGGER.info(
-                "视频 {} 已处理完成 | 待评论: {}, 已评论: {}",
+                "视频 {} 已处理完成 | 待评论: {}, 已处理: {}",
                 bvid, toComment.size(), commented.size()
         );
     }
@@ -179,8 +179,6 @@ public class CommentWorker implements Runnable {
 
         try {
             while (accepting) {
-                config.loadConfig();
-
                 if (!accepting) {
                     break;
                 }
@@ -215,10 +213,11 @@ public class CommentWorker implements Runnable {
                 }
 
                 try {
+                    config.loadConfig();
                     LOGGER.info("开始评论视频 {}", bvid);
                     if (commenter.commentAt(driver, bvid)) {
-                        afterComment(bvid);
                         LOGGER.info("已评论 {} 个视频", commentCount.addAndGet(1));
+                        afterComment(bvid);
                     }
                 } catch (WebDriverException e) {
                     LOGGER.warn("浏览器异常，尝试恢复: {}", e.getMessage());

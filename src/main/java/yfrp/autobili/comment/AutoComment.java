@@ -41,7 +41,6 @@ public class AutoComment {
         Thread.sleep(1000);
 
         String comment = commentFormat.generate();
-        LOGGER.info("发送评论: {}", comment);
 
         return sendCommentWithSelenium(driver, wait, comment);
     }
@@ -84,20 +83,23 @@ public class AutoComment {
             for (int i = 0; i < 3; i++) {
                 var success = (boolean) js.executeScript(script, biliComments, commentText);
                 if (success) {
+                    LOGGER.info("已发送评论: {}", commentText);
                     break;
                 }
-                LOGGER.warn("第 {} 次评论失败！1s 后重试...", i);
+                LOGGER.warn("第 {} 次评论失败！1s 后重试...", (i + 1));
                 Thread.sleep(1000);
             }
             Thread.sleep(500);
 
             // 3. 点击发布按钮
             String clickScript =
-                    "const comments = arguments[0];" +
-                    "const shadowRoot = comments.shadowRoot;" +
-                    "const commentBox = shadowRoot.querySelector('bili-comment-box');" +
-                    "const publishBtn = commentBox.shadowRoot.querySelector('#pub button');" +
-                    "publishBtn.click();";
+                    """
+                    const comments = arguments[0];
+                    const shadowRoot = comments.shadowRoot;
+                    const commentBox = shadowRoot.querySelector('bili-comment-box');
+                    const publishBtn = commentBox.shadowRoot.querySelector('#pub button');
+                    publishBtn.click();
+                    """;
 
             js.executeScript(clickScript, biliComments);
 

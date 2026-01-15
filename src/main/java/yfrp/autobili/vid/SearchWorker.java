@@ -106,7 +106,7 @@ public class SearchWorker implements Runnable {
                 .forEach(toComment::add);
         toComment.saveVideos();
 
-        LOGGER.info("根据关键词 '{}' 搜索到 {} 个视频 | 待评论: {}, 已评论: {}",
+        LOGGER.info("根据关键词 '{}' 搜索到 {} 个视频 | 待评论: {}, 已处理: {}",
                 keyword,
                 bvids.size(),
                 toComment.size(),

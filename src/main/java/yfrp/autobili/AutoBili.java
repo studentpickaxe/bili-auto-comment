@@ -12,6 +12,7 @@ import yfrp.autobili.vid.SearchWorker;
 import yfrp.autobili.vid.VidPool;
 
 import java.io.IOException;
+import java.util.Scanner;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -96,7 +97,7 @@ public class AutoBili {
         try {
             BVIDS_TO_COMMENT.loadVideos();
             BVIDS_COMMENTED.loadVideos();
-            LOGGER.info("已加载视频 | 待评论: {}, 已评论: {}",
+            LOGGER.info("已加载视频 | 待评论: {}, 已处理: {}",
                     BVIDS_TO_COMMENT.size(), BVIDS_COMMENTED.size());
         } catch (IOException e) {
             LOGGER.error("加载视频列表时出错", e);
@@ -212,7 +213,7 @@ public class AutoBili {
 
         try {
             LOGGER.info("正在打开浏览器...");
-            LOGGER.info("请登录并进行网站设置（例如自动播放、分辨率）");
+            LOGGER.info("请登录网站并设置（如自动播放、分辨率）");
             LOGGER.info("请勿直接关闭浏览器！");
             LOGGER.info("按下 Enter 保存登录状态和网站设置");
 
