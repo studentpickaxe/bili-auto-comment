@@ -214,8 +214,7 @@ public class AutoBili {
         try {
             LOGGER.info("正在打开浏览器...");
             LOGGER.info("请登录网站并设置（如自动播放、分辨率）");
-            LOGGER.info("请勿直接关闭浏览器！");
-            LOGGER.info("按下 Enter 保存登录状态和网站设置");
+            LOGGER.info("按 Enter 退出程序");
 
             driver.get("https://www.bilibili.com");
             IO.readln();
