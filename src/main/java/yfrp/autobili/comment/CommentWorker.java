@@ -15,6 +15,8 @@ import java.io.IOException;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -25,7 +27,8 @@ public class CommentWorker implements Runnable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CommentWorker.class);
 
-    private static final Pattern commentedLine = Pattern.compile("^(BV[A-Za-z0-9]+);pubdate(\\d+)$");
+    private static final Pattern commentedLineV1 = Pattern.compile("^(BV[A-Za-z0-9]+);pubdate(\\d+)$");
+    private static final Pattern commentedLineV2 = Pattern.compile("^v2;(BV[A-Za-z0-9]+);(\\d+)$");
 
     private static final AtomicInteger commentCount = new AtomicInteger(0);
 
@@ -71,8 +74,8 @@ public class CommentWorker implements Runnable {
         }
     }
 
-    public void skip(String bvid, long pubdate) {
-        afterComment(bvid, pubdate);
+    public void skip(String bvid) {
+        afterComment(bvid);
     }
 
     @Nonnull
@@ -95,17 +98,6 @@ public class CommentWorker implements Runnable {
                 );
                 skip = true;
 
-            } else {
-                var i = config.getMaxTimeSincePubdate();
-                if (pubDate < Instant.now().getEpochSecond() - i) {
-                    LOGGER.info("视频 {} 发布日期 {} 距今已超过设定的最大发布时间间隔 {}d {}h，已跳过该视频",
-                            bvid,
-                            formatTimestamp(pubDate),
-                            i / 86400,
-                            (i % 86400) / 3600
-                    );
-                    skip = true;
-                }
             }
 
         } catch (IOException | InterruptedException e) {
@@ -124,11 +116,11 @@ public class CommentWorker implements Runnable {
                 .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
     }
 
-    private void afterComment(String bvid, long pubdate) {
+    private void afterComment(String bvid) {
         toComment.remove(bvid);
         toComment.saveVideos();
 
-        commented.add(bvid + ";pubdate" + pubdate);
+        commented.add("v2;" + bvid + ";" + now());
         commented.saveVideos();
 
         LOGGER.info(
@@ -137,28 +129,47 @@ public class CommentWorker implements Runnable {
         );
     }
 
+    private long now() {
+        return Instant.now().getEpochSecond();
+    }
+
     private void clearCommented() {
+
+        List<String> toAdd = new ArrayList<>();
+
         commented.removeIf(line -> {
-            var matcher = commentedLine.matcher(line);
+            var matcher = commentedLineV2.matcher(line);
 
             if (!matcher.find()) {
+                // v1
+                var matcherV1 = commentedLineV1.matcher(line);
+
+                if (matcherV1.find()) {
+                    var bvid = matcherV1.group(1);
+                    var processTime = now();
+
+                    toAdd.add("v2;" + bvid + ";" + processTime);
+                }
+
                 return true;
             }
 
             var bvid = matcher.group(1);
-            var pubdate = Long.parseLong(matcher.group(2));
-            var maxSincePub = config.getMaxTimeSincePubdate();
-            if (pubdate < Instant.now().getEpochSecond() - maxSincePub) {
-                LOGGER.info("已删除已评论视频记录 {}，视频发布距今已超过设定的最大发布时间间隔 {}d {}h",
+            var processTime = Long.parseLong(matcher.group(2));
+            var autoClearDelay = config.getAutoClearDelay();
+            if (processTime < now() - autoClearDelay) {
+                LOGGER.info("已删除已评论视频记录 {}，视频处理距今已超过设定的最大时间间隔 {}d {}h",
                         bvid,
-                        maxSincePub / 86400,
-                        (maxSincePub % 86400) / 3600
+                        autoClearDelay / 86400,
+                        (autoClearDelay % 86400) / 3600
                 );
                 return true;
             }
 
             return false;
         });
+
+        commented.addAll(toAdd);
     }
 
     @Override
@@ -186,16 +197,15 @@ public class CommentWorker implements Runnable {
                     continue;
                 }
 
-                var check = checkPubDate(bvid);
-                if (check.skip()) {
-                    skip(bvid, check.pubdate());
+                if (checkPubDate(bvid).skip()) {
+                    skip(bvid);
                     continue;
                 }
 
                 try {
                     LOGGER.info("开始评论视频 {}", bvid);
                     if (commenter.commentAt(driver, bvid)) {
-                        afterComment(bvid, check.pubdate());
+                        afterComment(bvid);
                         LOGGER.info("已评论 {} 个视频", commentCount.addAndGet(1));
                     }
                 } catch (Exception e) {

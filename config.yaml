@@ -37,11 +37,11 @@ comment:
     year:   2026
     month:  1
     day:    14
-    hour:   7
+    hour:   11
     minute: 0
     second: 0
 
-  max_time_since_pubdate:
+  auto_clear_after_time:
     day:    3
     hour:   0
 

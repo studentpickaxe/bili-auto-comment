@@ -28,12 +28,16 @@ public class Config {
             """
             login:
               # 第一次使用请登录
+              # 无法重载
               enable: false
             
             
             search:
+              # 无法重载
               enable: true
+            
               interval: 120
+            
               keywords:
                 - 殖
                 - 公知
@@ -41,6 +45,7 @@ public class Config {
             
             comment:
               interval: 30
+            
               min_pubdate:
                 year:   2000
                 month:  1
@@ -48,6 +53,10 @@ public class Config {
                 hour:   0
                 minute: 0
                 second: 0
+            
+              auto_clear_after_time:
+                day:    3
+                hour:   0
             
               templates:
                 - ${wins}${stickers}
@@ -105,7 +114,7 @@ public class Config {
     private static final int minCommentInterval = 20;
     private int commentInterval;
     private int minPubdate;
-    private int maxTimeSincePubdate;
+    private int autoClearDelay;
 
     private final AutoComment autoCommentInstance = new AutoComment();
 
@@ -173,8 +182,8 @@ public class Config {
         return minPubdate;
     }
 
-    public int getMaxTimeSincePubdate() {
-        return maxTimeSincePubdate;
+    public int getAutoClearDelay() {
+        return autoClearDelay;
     }
 
     public static Config getInstance() {
@@ -237,10 +246,10 @@ public class Config {
         );
 
         Map<String, Object> minPubMap = getMap(commentMap, "min_pubdate");
-        int year = getInt(minPubMap, "year", 2000);
-        int month = getInt(minPubMap, "month", 1);
-        int day = getInt(minPubMap, "day", 1);
-        int hour = getInt(minPubMap, "hour", 0);
+        int year   = getInt(minPubMap, "year",   2000);
+        int month  = getInt(minPubMap, "month",  1);
+        int day    = getInt(minPubMap, "day",    1);
+        int hour   = getInt(minPubMap, "hour",   0);
         int minute = getInt(minPubMap, "minute", 0);
         int second = getInt(minPubMap, "second", 0);
         LocalDateTime minPubdateTime = LocalDateTime.of(year, month, day, hour, minute, second);
@@ -248,9 +257,9 @@ public class Config {
                 .atZone(ZoneId.systemDefault())
                 .toEpochSecond();
 
-        Map<String, Object> maxSincePub = getMap(commentMap, "max_time_since_pubdate");
-        this.maxTimeSincePubdate = getInt(maxSincePub, "day", 1) * 86400 +
-                                   getInt(maxSincePub, "hour", 0) * 3600;
+        Map<String, Object> autoClearMap = getMap(commentMap, "auto_clear_after_time");
+        this.autoClearDelay = getInt(autoClearMap, "day", 1) * 86400 +
+                              getInt(autoClearMap, "hour", 0) * 3600;
 
         this.autoCommentInstance.setCommentFormat(new RandomComment(commentMap));
     }

@@ -4,10 +4,7 @@ import javax.annotation.Nullable;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Predicate;
 
 public class VidPool {
@@ -55,6 +52,11 @@ public class VidPool {
         vidPool.addAll(Arrays.asList(bvids));
     }
 
+    public void addAll(Collection<String> bvids) {
+
+        vidPool.addAll(bvids);
+    }
+
     public void remove(String... bvids) {
 
         for (var bv : bvids) {
@@ -64,7 +66,7 @@ public class VidPool {
 
     public boolean hasVid(String bvid) {
         return vidPool.stream()
-                .anyMatch(line -> line.startsWith(bvid));
+                .anyMatch(line -> bvid.equals(line) || line.contains(bvid));
     }
 
     public void saveVideos() {

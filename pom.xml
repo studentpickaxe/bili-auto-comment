@@ -6,7 +6,7 @@
 
     <groupId>yfrp</groupId>
     <artifactId>bili-auto-comment</artifactId>
-    <version>1.2.2</version>
+    <version>1.2.3</version>
 
     <properties>
         <maven.compiler.source>25</maven.compiler.source>
