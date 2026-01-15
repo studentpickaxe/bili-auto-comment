@@ -101,17 +101,17 @@ public class SearchWorker implements Runnable {
         Thread.sleep(3000);
 
         var bvids = extractBVIDs(driver);
+        bvids.stream()
+                .filter(bv -> !commented.hasVid(bv))
+                .forEach(toComment::add);
+        toComment.saveVideos();
+
         LOGGER.info("根据关键词 '{}' 搜索到 {} 个视频 | 待评论: {}, 已评论: {}",
                 keyword,
                 bvids.size(),
                 toComment.size(),
                 commented.size()
         );
-
-        bvids.stream()
-                .filter(bv -> !commented.hasVid(bv))
-                .forEach(toComment::add);
-        toComment.saveVideos();
     }
 
     // 提取 BVID 的方法

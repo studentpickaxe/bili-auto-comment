@@ -201,6 +201,14 @@ public class CommentWorker implements Runnable {
                     continue;
                 }
 
+                if (commented.hasVid(bvid)) {
+
+                    commented.remove(bvid);
+                    commented.saveVideos();
+                    LOGGER.info("视频 {} 已被处理，跳过该视频", bvid);
+                    continue;
+                }
+
                 if (checkPubDate(bvid).skip()) {
                     skip(bvid);
                     continue;

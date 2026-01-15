@@ -60,13 +60,13 @@ public class VidPool {
     public void remove(String... bvids) {
 
         for (var bv : bvids) {
-            vidPool.remove(bv);
+            vidPool.removeIf(line -> line.equals(bv) || line.contains(bv));
         }
     }
 
     public boolean hasVid(String bvid) {
         return vidPool.stream()
-                .anyMatch(line -> bvid.equals(line) || line.contains(bvid));
+                .anyMatch(line -> line.equals(bvid) || line.contains(bvid));
     }
 
     public void saveVideos() {
