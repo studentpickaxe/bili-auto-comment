@@ -15,10 +15,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class Config {
 
@@ -100,6 +97,9 @@ public class Config {
                   - '🥇赢了'
             
             """;
+
+
+    private final Random random = new Random();
 
 
     // 登录
@@ -234,7 +234,7 @@ public class Config {
                 "keywords",
                 new String[]{"殖", "公知"}
         ));
-        Collections.shuffle(keywords);
+        Collections.shuffle(keywords, random);
         this.searchKeywords.clear();
         this.searchKeywords.addAll(keywords);
 
