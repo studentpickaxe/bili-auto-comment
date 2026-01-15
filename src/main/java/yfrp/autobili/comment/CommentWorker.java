@@ -1,6 +1,7 @@
 package yfrp.autobili.comment;
 
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.slf4j.Logger;
@@ -37,6 +38,7 @@ public class CommentWorker implements Runnable {
 
     private final VidPool toComment;
     private final VidPool commented;
+    private long lastClearTime = 0L;
 
     private volatile boolean accepting = true;
     private volatile Thread workerThread;
@@ -80,12 +82,10 @@ public class CommentWorker implements Runnable {
 
     @Nonnull
     private pubdateCheckResult checkPubDate(@Nonnull String bvid) {
-
-        boolean skip = false;
-        long pubDate = -1;
-
         try {
-            pubDate = BiliApi.getVidPubDate(bvid);
+
+            boolean skip = false;
+            long pubDate = BiliApi.getVidPubDate(bvid);
 
             // 2000-01-01 00:00:00
             if (config.getMinPubdate() >= 946656000 &&
@@ -100,11 +100,12 @@ public class CommentWorker implements Runnable {
 
             }
 
+            return new pubdateCheckResult(skip, pubDate);
+
         } catch (IOException | InterruptedException e) {
             LOGGER.error("获取视频 {} 发布日期时出错", bvid, e);
+            return new pubdateCheckResult(true, -1);
         }
-
-        return new pubdateCheckResult(skip, pubDate);
     }
 
     private record pubdateCheckResult(boolean skip, long pubdate) {
@@ -184,7 +185,10 @@ public class CommentWorker implements Runnable {
                     break;
                 }
 
-                clearCommented();
+                if (now() - lastClearTime > 3600) {
+                    clearCommented();
+                    lastClearTime = now();
+                }
 
                 String bvid;
                 try {
@@ -208,6 +212,9 @@ public class CommentWorker implements Runnable {
                         afterComment(bvid);
                         LOGGER.info("已评论 {} 个视频", commentCount.addAndGet(1));
                     }
+                } catch (WebDriverException e) {
+                    LOGGER.warn("浏览器异常，尝试恢复: {}", e.getMessage());
+                    recoverDriver();
                 } catch (Exception e) {
                     if (accepting) {
                         LOGGER.error("评论视频 {} 时异常", bvid, e);
@@ -229,9 +236,23 @@ public class CommentWorker implements Runnable {
         }
     }
 
+    private synchronized void recoverDriver() {
+        close();
+        try {
+            ChromeOptions options = new ChromeOptions();
+            ChromeOptionUtil.makeLightweight(options);
+            ChromeOptionUtil.setProfile(options, "comment");
+
+            driver = new ChromeDriver(options);
+            driver.get("https://www.bilibili.com");
+            LOGGER.info("评论浏览器已恢复");
+        } catch (Exception e) {
+            LOGGER.error("评论浏览器恢复失败", e);
+        }
+    }
+
     public void shutdown() {
         accepting = false;
-        close();
         if (workerThread != null) {
             workerThread.interrupt();
         }

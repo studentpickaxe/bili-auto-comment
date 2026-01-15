@@ -2,6 +2,7 @@ package yfrp.autobili.vid;
 
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
@@ -52,25 +53,40 @@ public class SearchWorker implements Runnable {
     public void run() {
         this.workerThread = Thread.currentThread();
 
-        try {
-            while (accepting) {
+        while (accepting) {
+            try {
                 config.loadConfig();
-
                 String keyword = nextKeyword();
-                try {
-                    searchOnce(keyword);
-                    Thread.sleep(config.getSearchInterval() * 1000L);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break; // 收到中断直接退出循环
+                searchOnce(keyword);
+                Thread.sleep(config.getSearchInterval() * 1000L);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            } catch (WebDriverException e) {
+                LOGGER.warn("搜索失败，尝试恢复浏览器: {}", e.getMessage());
+                recoverDriver();
+            } catch (Exception e) {
+                if (accepting) {
+                    LOGGER.error("搜索线程异常", e);
                 }
             }
+        }
+
+        close();
+    }
+
+    private synchronized void recoverDriver() {
+        close();
+        try {
+            ChromeOptions options = new ChromeOptions();
+            ChromeOptionUtil.makeLightweight(options);
+            ChromeOptionUtil.setProfile(options, "search");
+
+            driver = new ChromeDriver(options);
+            driver.get("https://www.bilibili.com");
+            LOGGER.info("浏览器已恢复");
         } catch (Exception e) {
-            if (accepting) {
-                LOGGER.error("搜索线程异常", e);
-            }
-        } finally {
-            close();
+            LOGGER.error("浏览器恢复失败", e);
         }
     }
 
@@ -85,7 +101,6 @@ public class SearchWorker implements Runnable {
         Thread.sleep(3000);
 
         var bvids = extractBVIDs(driver);
-        toComment.saveVideos();
         LOGGER.info("根据关键词 '{}' 搜索到 {} 个视频 | 待评论: {}, 已评论: {}",
                 keyword,
                 bvids.size(),
@@ -96,6 +111,7 @@ public class SearchWorker implements Runnable {
         bvids.stream()
                 .filter(bv -> !commented.hasVid(bv))
                 .forEach(toComment::add);
+        toComment.saveVideos();
     }
 
     // 提取 BVID 的方法
