@@ -33,7 +33,7 @@ search:
 
 
 comment:
-  interval: 60
+  interval: 120
 
   min_pubdate:
     year:   2000
