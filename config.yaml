@@ -34,7 +34,7 @@ search:
 
 
 comment:
-  interval: 120
+  interval: 150
 
   min_pubdate:
     year:   2000
