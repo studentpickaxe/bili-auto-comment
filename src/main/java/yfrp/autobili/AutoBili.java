@@ -12,7 +12,6 @@ import yfrp.autobili.vid.SearchWorker;
 import yfrp.autobili.vid.VidPool;
 
 import java.io.IOException;
-import java.util.Scanner;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;

@@ -40,6 +40,8 @@ public class CommentWorker implements Runnable {
     private final VidPool commented;
     private long lastClearTime = 0L;
 
+    private long cooldownEndTime = 0L;
+
     private volatile boolean accepting = true;
     private volatile Thread workerThread;
     private WebDriver driver;
@@ -188,43 +190,51 @@ public class CommentWorker implements Runnable {
                     lastClearTime = now();
                 }
 
-                String bvid;
-                try {
-                    bvid = queue.poll(1, TimeUnit.SECONDS);
-                } catch (InterruptedException e) {
-                    break;
-                }
+                if (cooldownEndTime < now()) {
 
-                if (bvid == null || bvid.isBlank()) {
-                    continue;
-                }
-
-                if (commented.hasVid(bvid)) {
-
-                    commented.remove(bvid);
-                    commented.saveVideos();
-                    LOGGER.info("视频 {} 已被处理，跳过该视频", bvid);
-                    continue;
-                }
-
-                if (checkPubDate(bvid).skip()) {
-                    skip(bvid);
-                    continue;
-                }
-
-                try {
-                    config.loadConfig();
-                    LOGGER.info("开始评论视频 {}", bvid);
-                    if (commenter.commentAt(driver, bvid)) {
-                        LOGGER.info("已评论 {} 个视频", commentCount.addAndGet(1));
-                        afterComment(bvid);
+                    String bvid;
+                    try {
+                        bvid = queue.poll(1, TimeUnit.SECONDS);
+                    } catch (InterruptedException e) {
+                        continue;
                     }
-                } catch (WebDriverException e) {
-                    LOGGER.warn("浏览器异常，尝试恢复: {}", e.getMessage());
-                    recoverDriver();
-                } catch (Exception e) {
-                    if (accepting) {
-                        LOGGER.error("评论视频 {} 时异常", bvid, e);
+
+                    if (bvid == null || bvid.isBlank()) {
+                        continue;
+                    }
+
+                    if (commented.hasVid(bvid)) {
+
+                        commented.remove(bvid);
+                        commented.saveVideos();
+                        LOGGER.info("视频 {} 已被处理，跳过该视频", bvid);
+                        continue;
+                    }
+
+                    if (checkPubDate(bvid).skip()) {
+                        skip(bvid);
+                        continue;
+                    }
+
+                    try {
+                        config.loadConfig();
+                        if (commenter.comment(driver, bvid)) {
+                            LOGGER.info("评论成功，已评论 {} 个视频", commentCount.addAndGet(1));
+                            afterComment(bvid);
+                        }
+
+                    } catch (WebDriverException e) {
+                        LOGGER.warn("浏览器异常，尝试恢复: {}", e.getMessage());
+                        recoverDriver();
+
+                    } catch (CommentCooldownException e) {
+                        LOGGER.warn("触发风控，暂停自动评论 1 小时: {}", e.getMessage());
+                        cooldownEndTime = now() + config.getCommentCooldown();
+
+                    } catch (Exception e) {
+                        if (accepting) {
+                            LOGGER.error("评论视频 {} 时异常", bvid, e);
+                        }
                     }
                 }
 

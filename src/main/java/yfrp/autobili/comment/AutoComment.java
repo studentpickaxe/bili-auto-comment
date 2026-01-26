@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
+import java.util.List;
 
 public class AutoComment {
 
@@ -18,12 +19,73 @@ public class AutoComment {
 
     private RandomComment commentFormat = null;
 
+    private static final String SCRIPT_SEND_COMMENT =
+            """
+            const comments = arguments[0];
+            if (!comments || !comments.shadowRoot) return false;
+            
+            const shadowRoot = comments.shadowRoot;
+            const commentBox = shadowRoot.querySelector('bili-comment-box');
+            if (!commentBox || !commentBox.shadowRoot) return false;
+            
+            const textarea = commentBox.shadowRoot.querySelector('bili-comment-rich-textarea');
+            if (!textarea || !textarea.shadowRoot) return false;
+            
+            const editor = textarea.shadowRoot.querySelector('.brt-editor');
+            if (!editor) return false;
+            
+            editor.textContent = arguments[1];
+            editor.dispatchEvent(new Event('input', { bubbles: true }));
+            return true;
+            """;
+    private static final String SCRIPT_CLICK_SEND_BUTTON =
+            """
+            const comments = arguments[0];
+            const shadowRoot = comments.shadowRoot;
+            const commentBox = shadowRoot.querySelector('bili-comment-box');
+            const publishBtn = commentBox.shadowRoot.querySelector('#pub button');
+            publishBtn.click();
+            """;
+    private static final String SCRIPT_CHECK_TOAST =
+            """
+            window.biliToasts = [];
+                const observer = new MutationObserver((mutations) => {
+                  mutations.forEach((mutation) => {
+                    mutation.addedNodes.forEach((node) => {
+                      // 检查节点本身或其子节点是否有 b-toast 类
+                      if (node.nodeType === 1) {
+                        let toastNode = node.classList.contains('b-toast') ? node : node.querySelector('.b-toast');
+                        if (toastNode) {
+                            const content = toastNode.innerText.trim();
+                            if (content) {
+                                window.biliToasts.push(content);
+                                console.log('[监视器] 捕获到 toast: ' + content);
+                            }
+                        }
+                      }
+                    });
+                  });
+                });
+                observer.observe(document.body, { childList: true, subtree: true });
+            """;
+    private static final String SCRIPT_GET_TOASTS =
+            """
+            var results = window.biliToasts;
+            window.biliToasts = [];
+            return results;
+            """;
+
     public void setCommentFormat(RandomComment commentFormat) {
         this.commentFormat = commentFormat;
     }
 
-    public boolean commentAt(WebDriver driver, String bvid)
-            throws InterruptedException {
+    public boolean comment(WebDriver driver,
+                           String bvid)
+            throws InterruptedException,
+                   CommentCooldownException {
+
+        var comment = commentFormat.generate();
+        LOGGER.info("开始在视频 {} 评论: {}", bvid, comment);
 
         if (commentFormat == null){
             throw new IllegalStateException("Comment format not set");
@@ -40,9 +102,50 @@ public class AutoComment {
         scrollToCommentSection(driver);
         Thread.sleep(1000);
 
-        String comment = commentFormat.generate();
+        return sendComment(driver, wait, comment);
+    }
 
-        return sendCommentWithSelenium(driver, wait, comment);
+
+    private boolean sendComment(WebDriver driver,
+                                WebDriverWait wait,
+                                String commentText)
+            throws InterruptedException,
+                   CommentCooldownException {
+
+        ((JavascriptExecutor) driver).executeScript(SCRIPT_CHECK_TOAST);
+
+        if (!sendCommentWithSelenium(driver, wait, commentText)) {
+            return false;
+        }
+
+        return checkCommentToast(driver);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static boolean checkCommentToast(WebDriver driver)
+            throws InterruptedException,
+                   CommentCooldownException {
+
+        for (int i = 0; i < 10; i++) {
+            var toasts = (List<String>) ((JavascriptExecutor) driver).executeScript(SCRIPT_GET_TOASTS);
+
+            for (var t : toasts) {
+
+                if (t.equals("发送成功")) {
+                    return true;
+                }
+
+                if (t.contains("CD") || t.contains("cd")) {
+                    throw new CommentCooldownException();
+                }
+
+            }
+
+            Thread.sleep(500);
+        }
+
+        LOGGER.warn("未检测到评论发送成功的消息，评论失败");
+        return false;
     }
 
 
@@ -54,66 +157,35 @@ public class AutoComment {
 
             JavascriptExecutor js = (JavascriptExecutor) driver;
 
-            // 1. 找到 bili-comments 组件
             WebElement biliComments = wait.until(ExpectedConditions.presenceOfElementLocated(
                     By.cssSelector("bili-comments")
             ));
 
-            // 2. 通过 JavaScript 访问 Shadow DOM 并输入评论
-            String script =
-                    """
-                    const comments = arguments[0];
-                    if (!comments || !comments.shadowRoot) return false;
-                    
-                    const shadowRoot = comments.shadowRoot;
-                    const commentBox = shadowRoot.querySelector('bili-comment-box');
-                    if (!commentBox || !commentBox.shadowRoot) return false;
-                    
-                    const textarea = commentBox.shadowRoot.querySelector('bili-comment-rich-textarea');
-                    if (!textarea || !textarea.shadowRoot) return false;
-                    
-                    const editor = textarea.shadowRoot.querySelector('.brt-editor');
-                    if (!editor) return false;
-                    
-                    editor.textContent = arguments[1];
-                    editor.dispatchEvent(new Event('input', { bubbles: true }));
-                    return true;
-                    """;
-
-            for (int i = 0; i < 3; i++) {
-                var success = (boolean) js.executeScript(script, biliComments, commentText);
+            var i = 0;
+            while (true) {
+                var success = (boolean) js.executeScript(SCRIPT_SEND_COMMENT, biliComments, commentText);
                 if (success) {
-                    LOGGER.info("已发送评论: {}", commentText);
                     break;
                 }
-                LOGGER.warn("第 {} 次评论失败！1s 后重试...", (i + 1));
+                if (i == 3) {
+                    LOGGER.error("无法找到评论框，评论失败");
+                    return false;
+                }
+                LOGGER.warn("第 {} 次评论失败！1s 后重试...", (++i));
                 Thread.sleep(1000);
             }
             Thread.sleep(500);
 
-            // 3. 点击发布按钮
-            String clickScript =
-                    """
-                    const comments = arguments[0];
-                    const shadowRoot = comments.shadowRoot;
-                    const commentBox = shadowRoot.querySelector('bili-comment-box');
-                    const publishBtn = commentBox.shadowRoot.querySelector('#pub button');
-                    publishBtn.click();
-                    """;
-
-            js.executeScript(clickScript, biliComments);
+            js.executeScript(SCRIPT_CLICK_SEND_BUTTON, biliComments);
 
             return true;
 
         } catch (Exception e) {
-            LOGGER.error("评论失败", e);
+            LOGGER.error("尝试发送评论时出错", e);
         }
         return false;
     }
 
-    /**
-     * 滚动到评论区
-     */
     private void scrollToCommentSection(WebDriver driver) {
         try {
             JavascriptExecutor js = (JavascriptExecutor) driver;
@@ -130,13 +202,7 @@ public class AutoComment {
             // LOGGER.debug("已滚动到评论区");
 
         } catch (Exception e) {
-            LOGGER.warn("滚动到评论区失败，尝试备选方案");
-            try {
-                JavascriptExecutor js = (JavascriptExecutor) driver;
-                js.executeScript("window.scrollTo(0, document.body.scrollHeight * 0.5);");
-            } catch (Exception ex) {
-                LOGGER.error("备选滚动方案也失败", ex);
-            }
+            LOGGER.error("滚动到评论区失败", e);
         }
     }
 
