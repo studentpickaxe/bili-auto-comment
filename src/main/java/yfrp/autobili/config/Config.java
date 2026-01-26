@@ -30,14 +30,14 @@ public class Config {
             login:
               # 第一次使用请登录
               # 无法重载
-              enable: false
+              enable: NO
             
             
             search:
               # 无法重载
-              enable: true
+              enable: YES
             
-              interval: 120
+              interval: 40
             
               keywords:
                 - 殖
@@ -45,7 +45,12 @@ public class Config {
             
             
             comment:
-              interval: 30
+              interval: 40
+            
+              cooldown:
+                hour:   3
+                minute: 0
+                second: 0
             
               min_pubdate:
                 year:   2000
@@ -60,8 +65,8 @@ public class Config {
                 hour:   0
             
               templates:
-                - ${wins}${stickers}
-                - ${stickers}${wins}
+                - :wins;:stickers;
+                - :stickers;:wins;
             
               vars:
                 stickers:
@@ -117,7 +122,8 @@ public class Config {
     // 评论
     private static final int minCommentInterval = 20;
     private int commentInterval;
-    private int minPubdate;
+    private int commentCooldown;
+    private long minPubdate;
     private int autoClearDelay;
 
     private final AutoComment autoCommentInstance = new AutoComment();
@@ -179,7 +185,7 @@ public class Config {
         // 搜索
         Map<String, Object> searchMap = getMap(config, "search");
         this.searchEnabled = getBoolean(searchMap, "enable", true);
-        this.searchInterval = getInt(searchMap, "interval", 300);
+        this.searchInterval = getInt(searchMap, "interval", 40);
         var keywords = new ArrayList<>(getStringArray(
                 searchMap,
                 "keywords",
@@ -192,15 +198,20 @@ public class Config {
         // 评论
         Map<String, Object> commentMap = getMap(config, "comment");
         this.commentInterval = Math.max(
-                getInt(commentMap, "interval", 30),
+                getInt(commentMap, "interval", 40),
                 minCommentInterval
         );
 
+        Map<String, Object> cooldownMap = getMap(commentMap, "cooldown");
+        this.commentCooldown = getInt(cooldownMap, "hour",   3) * 3600 +
+                               getInt(cooldownMap, "minute", 0) * 60 +
+                               getInt(cooldownMap, "second", 0);
+
         Map<String, Object> minPubMap = getMap(commentMap, "min_pubdate");
-        int year = getInt(minPubMap, "year", 2000);
-        int month = getInt(minPubMap, "month", 1);
-        int day = getInt(minPubMap, "day", 1);
-        int hour = getInt(minPubMap, "hour", 0);
+        int year   = getInt(minPubMap, "year",   2000);
+        int month  = getInt(minPubMap, "month",  1);
+        int day    = getInt(minPubMap, "day",    1);
+        int hour   = getInt(minPubMap, "hour",   0);
         int minute = getInt(minPubMap, "minute", 0);
         int second = getInt(minPubMap, "second", 0);
         LocalDateTime minPubdateTime = LocalDateTime.of(year, month, day, hour, minute, second);
@@ -209,7 +220,7 @@ public class Config {
                 .toEpochSecond();
 
         Map<String, Object> autoClearMap = getMap(commentMap, "auto_clear_after_time");
-        this.autoClearDelay = getInt(autoClearMap, "day", 1) * 86400 +
+        this.autoClearDelay = getInt(autoClearMap, "day",  1) * 86400 +
                               getInt(autoClearMap, "hour", 0) * 3600;
 
         this.autoCommentInstance.setCommentFormat(new RandomComment(commentMap));
@@ -275,7 +286,11 @@ public class Config {
         return commentInterval;
     }
 
-    public int getMinPubdate() {
+    public int getCommentCooldown() {
+        return commentCooldown;
+    }
+
+    public long getMinPubdate() {
         return minPubdate;
     }
 

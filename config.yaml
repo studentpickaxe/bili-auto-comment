@@ -35,7 +35,12 @@ search:
 
 
 comment:
-  interval: 150
+  interval: 40
+
+  cooldown:
+    hour:   3
+    minute: 0
+    second: 0
 
   min_pubdate:
     year:   2000
