@@ -83,31 +83,27 @@ public class CommentWorker implements Runnable {
     }
 
     @Nonnull
-    private pubdateCheckResult checkPubDate(@Nonnull String bvid) {
-        try {
+    private pubdateCheckResult checkPubDate(@Nonnull String bvid)
+            throws IOException,
+                   InterruptedException {
 
-            boolean skip = false;
-            long pubDate = BiliApi.getVidPubDate(bvid);
+        boolean skip = false;
+        long pubDate = BiliApi.getVidPubDate(bvid);
 
-            // 2000-01-01 00:00:00
-            if (config.getMinPubdate() >= 946656000 &&
-                pubDate < config.getMinPubdate()) {
+        // 2000-01-01 00:00:00
+        if (config.getMinPubdate() >= 946656000 &&
+            pubDate < config.getMinPubdate()) {
 
-                LOGGER.info("视频 {} 发布日期 {} 早于设定的最早发布日期 {}，已跳过该视频",
-                        bvid,
-                        formatTimestamp(pubDate),
-                        formatTimestamp(config.getMinPubdate())
-                );
-                skip = true;
+            LOGGER.info("视频 {} 发布日期 {} 早于设定的最早发布日期 {}，已跳过该视频",
+                    bvid,
+                    formatTimestamp(pubDate),
+                    formatTimestamp(config.getMinPubdate())
+            );
+            skip = true;
 
-            }
-
-            return new pubdateCheckResult(skip, pubDate);
-
-        } catch (IOException | InterruptedException e) {
-            LOGGER.error("获取视频 {} 发布日期时出错", bvid, e);
-            return new pubdateCheckResult(true, -1);
         }
+
+        return new pubdateCheckResult(skip, pubDate);
     }
 
     private record pubdateCheckResult(boolean skip, long pubdate) {
@@ -211,8 +207,14 @@ public class CommentWorker implements Runnable {
                         continue;
                     }
 
-                    if (checkPubDate(bvid).skip()) {
-                        skip(bvid);
+                    try {
+                        if (checkPubDate(bvid).skip()) {
+                            skip(bvid);
+                            continue;
+                        }
+
+                    } catch (IOException | InterruptedException e) {
+                        LOGGER.error("获取视频 {} 发布日期时出错", bvid, e);
                         continue;
                     }
 
