@@ -118,11 +118,12 @@ public class AutoComment {
             return false;
         }
 
-        return checkCommentToast(driver);
+        checkCommentToast(driver);
+        return true;
     }
 
     @SuppressWarnings("unchecked")
-    private static boolean checkCommentToast(WebDriver driver)
+    private static void checkCommentToast(WebDriver driver)
             throws InterruptedException,
                    CommentCooldownException {
 
@@ -132,7 +133,8 @@ public class AutoComment {
             for (var t : toasts) {
 
                 if (t.equals("发送成功")) {
-                    return true;
+                    LOGGER.info("评论发送成功");
+                    return;
                 }
 
                 if (t.contains("CD") || t.contains("cd")) {
@@ -144,8 +146,7 @@ public class AutoComment {
             Thread.sleep(500);
         }
 
-        LOGGER.warn("未检测到评论发送成功的消息，评论失败");
-        return false;
+        LOGGER.warn("评论发送失败，可能是 up 主关闭评论区或设置权限");
     }
 
 
@@ -168,10 +169,10 @@ public class AutoComment {
                     break;
                 }
                 if (i == 3) {
-                    LOGGER.error("无法找到评论框，评论失败");
+                    LOGGER.error("无法找到评论框，评论输入失败");
                     return false;
                 }
-                LOGGER.warn("第 {} 次评论失败！1s 后重试...", (++i));
+                LOGGER.warn("第 {} 次输入评论失败！1s 后重试...", (++i));
                 Thread.sleep(1000);
             }
             Thread.sleep(500);
@@ -181,7 +182,7 @@ public class AutoComment {
             return true;
 
         } catch (Exception e) {
-            LOGGER.error("尝试发送评论时出错", e);
+            LOGGER.error("尝试输入评论时出错", e);
         }
         return false;
     }

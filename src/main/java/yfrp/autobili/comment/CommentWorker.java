@@ -219,7 +219,7 @@ public class CommentWorker implements Runnable {
                     try {
                         config.loadConfig();
                         if (commenter.comment(driver, bvid)) {
-                            LOGGER.info("评论成功，已评论 {} 个视频", commentCount.addAndGet(1));
+                            LOGGER.info("已处理 {} 个视频", commentCount.addAndGet(1));
                             afterComment(bvid);
                         }
 
@@ -228,8 +228,13 @@ public class CommentWorker implements Runnable {
                         recoverDriver();
 
                     } catch (CommentCooldownException e) {
-                        LOGGER.warn("触发风控，暂停自动评论 1 小时: {}", e.getMessage());
-                        cooldownEndTime = now() + config.getCommentCooldown();
+                        var cd = config.getCommentCooldown();
+                        LOGGER.warn("触发风控，暂停自动评论 {}h {}min {}s",
+                                cd / 3600,
+                                (cd % 3600) / 60,
+                                cd % 60
+                        );
+                        cooldownEndTime = now() + cd;
 
                     } catch (Exception e) {
                         if (accepting) {
