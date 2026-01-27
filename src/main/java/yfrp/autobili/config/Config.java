@@ -37,7 +37,7 @@ public class Config {
               # 无法重载
               enable: YES
             
-              interval: 40
+              interval: 30
             
               keywords:
                 - 殖
@@ -45,10 +45,10 @@ public class Config {
             
             
             comment:
-              interval: 40
+              interval: 60
             
               cooldown:
-                hour:   3
+                hour:   2
                 minute: 0
                 second: 0
             
@@ -185,7 +185,7 @@ public class Config {
         // 搜索
         Map<String, Object> searchMap = getMap(config, "search");
         this.searchEnabled = getBoolean(searchMap, "enable", true);
-        this.searchInterval = getInt(searchMap, "interval", 40);
+        this.searchInterval = getInt(searchMap, "interval", 30);
         var keywords = new ArrayList<>(getStringArray(
                 searchMap,
                 "keywords",
@@ -198,12 +198,12 @@ public class Config {
         // 评论
         Map<String, Object> commentMap = getMap(config, "comment");
         this.commentInterval = Math.max(
-                getInt(commentMap, "interval", 40),
+                getInt(commentMap, "interval", 60),
                 minCommentInterval
         );
 
         Map<String, Object> cooldownMap = getMap(commentMap, "cooldown");
-        this.commentCooldown = getInt(cooldownMap, "hour",   3) * 3600 +
+        this.commentCooldown = getInt(cooldownMap, "hour",   2) * 3600 +
                                getInt(cooldownMap, "minute", 0) * 60 +
                                getInt(cooldownMap, "second", 0);
 

@@ -35,10 +35,10 @@ search:
 
 
 comment:
-  interval: 40
+  interval: 60
 
   cooldown:
-    hour:   3
+    hour:   2
     minute: 0
     second: 0
 

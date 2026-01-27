@@ -137,7 +137,7 @@ public class AutoComment {
                     return;
                 }
 
-                if (t.contains("CD") || t.contains("cd")) {
+                if (t.contains("cd") || t.contains("CD")) {
                     throw new CommentCooldownException();
                 }
 

@@ -69,12 +69,11 @@ public class CommentWorker implements Runnable {
     // 提交评论任务
     public void submit(String bvid) {
         if (!accepting) {
-            LOGGER.debug("请求停止，不执行 {} 的评论任务", bvid);
             return;
         }
 
-        if (!queue.offer(bvid)) {
-            LOGGER.warn("评论队列已满,跳过视频 {}", bvid);
+        if (cooldownEndTime < now() && !queue.offer(bvid)) {
+            LOGGER.warn("评论队列已满，跳过视频 {}", bvid);
         }
     }
 
