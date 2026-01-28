@@ -219,7 +219,7 @@ public class Config {
                 .atZone(ZoneId.systemDefault())
                 .toEpochSecond();
 
-        Map<String, Object> autoClearMap = getMap(commentMap, "auto_clear_after_time");
+        Map<String, Object> autoClearMap = getMap(commentMap, "auto_clear_delay");
         this.autoClearDelay = getInt(autoClearMap, "day",  1) * 86400 +
                               getInt(autoClearMap, "hour", 0) * 3600;
 

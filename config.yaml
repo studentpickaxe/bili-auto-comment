@@ -51,7 +51,7 @@ comment:
     minute: 0
     second: 0
 
-  auto_clear_after_time:
+  auto_clear_delay:
     day:    3
     hour:   0
 
