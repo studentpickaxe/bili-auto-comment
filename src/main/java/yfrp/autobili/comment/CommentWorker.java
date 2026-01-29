@@ -76,14 +76,14 @@ public class CommentWorker implements Runnable {
         if (config.getAutoClearDelay() > 0 &&
             pubDate < now() - config.getAutoClearDelay()) {
 
-            removeFromToComment(bvid, false);
-
             LOGGER.info("视频 {} 发布日期 {} 距今已超过设定的最大时间间隔 {}d {}h",
                     bvid,
                     formatTimestamp(pubDate),
                     config.getAutoClearDelay() / 86400,
                     (config.getAutoClearDelay() % 86400) / 3600
             );
+
+            removeFromToComment(bvid, false);
 
             return true;
         }
