@@ -166,7 +166,7 @@ public class CommentWorker implements Runnable {
             var processTime = Long.parseLong(matcher.group(2));
             var autoClearDelay = config.getAutoClearDelay();
             if (processTime < now() - autoClearDelay) {
-                LOGGER.info("已删除已评论视频记录 {}，视频处理距今已超过设定的最大时间间隔 {}d {}h",
+                LOGGER.info("已删除已处理的视频 {}，视频处理距今已超过设定的最大时间间隔 {}d {}h",
                         bvid,
                         autoClearDelay / 86400,
                         (autoClearDelay % 86400) / 3600
@@ -235,7 +235,7 @@ public class CommentWorker implements Runnable {
 
         } finally {
             close();
-            LOGGER.info("评论线程已结束，已评论 {} 个视频", commentCount.get());
+            LOGGER.info("评论线程已结束，已处理 {} 个视频", commentCount.get());
         }
     }
 
