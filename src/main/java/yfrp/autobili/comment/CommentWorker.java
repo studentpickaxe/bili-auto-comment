@@ -73,6 +73,17 @@ public class CommentWorker implements Runnable {
 
         long pubDate = BiliApi.getVidPubDate(bvid);
 
+        if (pubDate < 0) {
+
+            LOGGER.info("视频 {} 发布日期为负 ({})，可能是视频被删除",
+                    bvid,
+                    pubDate
+            );
+
+            removeFromToComment(bvid, false);
+            return true;
+        }
+
         if (config.getAutoClearDelay() > 0 &&
             pubDate < now() - config.getAutoClearDelay()) {
 
@@ -84,7 +95,6 @@ public class CommentWorker implements Runnable {
             );
 
             removeFromToComment(bvid, false);
-
             return true;
         }
 
