@@ -20,7 +20,7 @@ public class BiliApi {
         var client = HttpClient.newHttpClient();
         var request = HttpRequest.newBuilder()
                 .uri(URI.create(apiUrl))
-                .header("User-Agent", "Mozilla/5.0")
+                .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36")
                 .GET()
                 .build();
         var response = client.send(request, HttpResponse.BodyHandlers.ofString());
