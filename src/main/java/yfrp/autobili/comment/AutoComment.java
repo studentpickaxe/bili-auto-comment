@@ -12,13 +12,20 @@ import org.slf4j.LoggerFactory;
 import java.time.Duration;
 import java.util.List;
 
+/**
+ * Bilibili 自动评论功能类
+ * 负责在指定视频下自动发送评论
+ */
 public class AutoComment {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AutoComment.class);
+    // 等待元素超时时间（秒）
     private static final int TIMEOUT = 15;
 
+    // 评论格式生成器
     private RandomComment commentFormat = null;
 
+    // JavaScript 脚本：向评论框发送评论内容
     private static final String SCRIPT_SEND_COMMENT =
             """
             const comments = arguments[0];
@@ -38,6 +45,7 @@ public class AutoComment {
             editor.dispatchEvent(new Event('input', {bubbles: true}));
             return true;
             """;
+    // JavaScript 脚本：点击发送按钮
     private static final String SCRIPT_CLICK_SEND_BUTTON =
             """
             const comments = arguments[0];
@@ -46,6 +54,7 @@ public class AutoComment {
             const publishBtn = commentBox.shadowRoot.querySelector('#pub button');
             publishBtn.click();
             """;
+    // JavaScript 脚本：设置 Toast 监视器，用于捕获评论发送结果
     private static final String SCRIPT_CHECK_TOAST =
             """
             window.biliToasts = [];
@@ -68,6 +77,7 @@ public class AutoComment {
             });
             observer.observe(document.body, {childList: true, subtree: true});
             """;
+    // JavaScript 脚本：获取 Toast 消息
     private static final String SCRIPT_GET_TOASTS =
             """
             var results = window.biliToasts;
@@ -75,114 +85,182 @@ public class AutoComment {
             return results;
             """;
 
+    /**
+     * 设置评论格式生成器
+     *
+     * @param commentFormat 评论格式生成器实例
+     */
     public void setCommentFormat(RandomComment commentFormat) {
         this.commentFormat = commentFormat;
     }
 
+    /**
+     * 在指定视频下发送评论
+     *
+     * @param driver WebDriver 实例
+     * @param bvid 视频 BV 号
+     * @return 评论是否发送成功
+     * @throws InterruptedException 线程中断异常
+     * @throws CommentCooldownException 评论冷却异常
+     */
     public boolean comment(WebDriver driver,
                            String bvid)
             throws InterruptedException,
                    CommentCooldownException {
 
+        // 生成评论内容
         var comment = commentFormat.generate();
         LOGGER.info("开始在视频 {} 评论: {}", bvid, comment);
 
+        // 检查评论格式是否已设置
         if (commentFormat == null){
             throw new IllegalStateException("Comment format not set");
         }
 
+        // 构建视频链接
         String vidLink = "https://www.bilibili.com/video/" + bvid + "/";
 
+        // 创建等待对象
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(TIMEOUT));
 
+        // 导航到视频页面
         driver.get(vidLink);
 
+        // 等待评论区元素加载
         wait.until(ExpectedConditions.presenceOfElementLocated(By.tagName("bili-comments")));
 
+        // 滚动到评论区
         scrollToCommentSection(driver);
         Thread.sleep(1000);
 
+        // 发送评论
         return sendComment(driver, wait, comment);
     }
 
 
+    /**
+     * 发送评论的核心方法
+     *
+     * @param driver WebDriver 实例
+     * @param wait 等待对象
+     * @param commentText 评论内容
+     * @return 评论是否发送成功
+     * @throws InterruptedException 线程中断异常
+     * @throws CommentCooldownException 评论冷却异常
+     */
     private boolean sendComment(WebDriver driver,
                                 WebDriverWait wait,
                                 String commentText)
             throws InterruptedException,
                    CommentCooldownException {
 
+        // 设置 Toast 监视器
         ((JavascriptExecutor) driver).executeScript(SCRIPT_CHECK_TOAST);
 
+        // 使用 Selenium 发送评论
         if (!sendCommentWithSelenium(driver, wait, commentText)) {
             return false;
         }
 
+        // 检查评论发送结果
         checkCommentToast(driver);
         return true;
     }
 
+    /**
+     * 检查评论发送结果
+     * 通过检查 Toast 消息来判断评论是否发送成功
+     *
+     * @param driver WebDriver 实例
+     * @throws InterruptedException 线程中断异常
+     * @throws CommentCooldownException 评论冷却异常
+     */
     @SuppressWarnings("unchecked")
     private static void checkCommentToast(WebDriver driver)
             throws InterruptedException,
                    CommentCooldownException {
 
+        // 最多检查10次，每次间隔500ms
         for (int i = 0; i < 10; i++) {
+            // 获取 Toast 消息
             var toasts = (List<String>) ((JavascriptExecutor) driver).executeScript(SCRIPT_GET_TOASTS);
 
+            // 遍历所有 Toast 消息
             for (var t : toasts) {
 
+                // 跳过空消息
                 if (t == null || t.isBlank()) {
                     continue;
                 }
 
+                // 评论发送成功
                 if (t.equals("发送成功")) {
                     LOGGER.info("评论发送成功");
                     return;
                 }
 
+                // 评论冷却
                 if (t.contains("cd") || t.contains("CD")) {
                     throw new CommentCooldownException();
                 }
 
+                // 评论发送失败
                 LOGGER.warn("评论发送失败: {}", t);
                 return;
 
             }
 
+            // 等待500ms后再次检查
             Thread.sleep(500);
         }
 
     }
 
 
+    /**
+     * 使用 Selenium 发送评论
+     * 通过 JavaScript 操作 Shadow DOM 中的评论框
+     *
+     * @param driver WebDriver 实例
+     * @param wait 等待对象
+     * @param commentText 评论内容
+     * @return 评论是否发送成功
+     */
     private boolean sendCommentWithSelenium(WebDriver driver,
                                             WebDriverWait wait,
                                             String commentText) {
 
         try {
 
+            // 获取 JavaScript 执行器
             JavascriptExecutor js = (JavascriptExecutor) driver;
 
+            // 等待评论区元素加载
             WebElement biliComments = wait.until(ExpectedConditions.presenceOfElementLocated(
                     By.cssSelector("bili-comments")
             ));
 
             var i = 0;
+            // 最多重试3次
             while (true) {
+                // 执行 JavaScript 向评论框发送评论内容
                 var success = (boolean) js.executeScript(SCRIPT_SEND_COMMENT, biliComments, commentText);
                 if (success) {
                     break;
                 }
+                // 重试次数达到3次，退出
                 if (i == 3) {
                     LOGGER.error("无法找到评论框，评论输入失败");
                     return false;
                 }
+                // 重试
                 LOGGER.warn("第 {} 次输入评论失败！1s 后重试...", (++i));
                 Thread.sleep(1000);
             }
+            // 等待500ms
             Thread.sleep(500);
 
+            // 点击发送按钮
             js.executeScript(SCRIPT_CLICK_SEND_BUTTON, biliComments);
 
             return true;
@@ -193,8 +271,15 @@ public class AutoComment {
         return false;
     }
 
+    /**
+     * 滚动到评论区
+     * 将页面滚动到评论区位置，确保评论区可见
+     *
+     * @param driver WebDriver 实例
+     */
     private void scrollToCommentSection(WebDriver driver) {
         try {
+            // 获取 JavaScript 执行器
             JavascriptExecutor js = (JavascriptExecutor) driver;
 
             // 查找评论区元素

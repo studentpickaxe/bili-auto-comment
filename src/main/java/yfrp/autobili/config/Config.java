@@ -19,12 +19,18 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
 
+/**
+ * 系统配置类
+ * 负责加载和管理应用程序的配置信息
+ */
 public class Config {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Config.class);
 
+    // 配置文件名
     private static final String configFile = "config.yaml";
 
+    // 默认配置内容
     private static final String defaultConfig =
             """
             login:
@@ -109,29 +115,43 @@ public class Config {
             """;
 
 
+    // 随机数种子，用于关键词随机化
     private final long SEED = System.currentTimeMillis();
 
 
-    // 登录
+    // 登录配置
     private boolean loginEnabled;
 
+    // 搜索间隔最小值（秒）
     public static final int MIN_SEARCH_INTERVAL = 10;
+    // 评论间隔最小值（秒）
     public static final int MIN_COMMENT_INTERVAL = 20;
 
-    // 搜索
+    // 搜索配置
     private boolean searchEnabled;
     private int searchInterval;
+    // 搜索关键词列表
     private final List<String> searchKeywords = new ArrayList<>();
 
-    // 评论
+    // 评论配置
     private int commentInterval;
+    // 评论冷却时间（秒）
     private int commentCooldown;
+    // 最早发布时间戳
     private long minPubdate;
+    // 自动清理延迟时间（秒）
     private int autoClearDelay;
 
+    // 自动评论实例
     private final AutoComment autoCommentInstance = new AutoComment();
 
 
+    /**
+     * 构造函数
+     * 检查配置文件是否存在，如果不存在则创建默认配置文件
+     *
+     * @param path 配置文件路径
+     */
     public Config(Path path) {
         var first = Files.notExists(path);
         this.loginEnabled = first;
@@ -140,6 +160,12 @@ public class Config {
         }
     }
 
+    /**
+     * 获取配置实例
+     * 单例模式，确保全局只有一个配置实例
+     *
+     * @return 配置实例
+     */
     public static Config getInstance() {
         Path path = Path.of(configFile);
         var config = new Config(path);
@@ -147,10 +173,19 @@ public class Config {
         return config;
     }
 
+    /**
+     * 重新加载配置
+     * 从配置文件中重新读取配置信息
+     */
     public void loadConfig() {
         loadConfig(Path.of(configFile));
     }
 
+    /**
+     * 从指定路径加载配置
+     *
+     * @param path 配置文件路径
+     */
     private void loadConfig(Path path) {
         Yaml yaml = new Yaml();
 
@@ -177,15 +212,21 @@ public class Config {
         }
     }
 
+    /**
+     * 解析配置文件
+     * 将 YAML 配置文件解析为 Java 对象
+     *
+     * @param config 配置对象
+     */
     private void parseConfig(Map<String, Object> config) {
 
-        // 登录
+        // 解析登录配置
         Map<String, Object> loginMap = getMap(config, "login");
         if (getBoolean(loginMap, "enable", false)) {
             this.loginEnabled = true;
         }
 
-        // 搜索
+        // 解析搜索配置
         Map<String, Object> searchMap = getMap(config, "search");
         this.searchEnabled = getBoolean(searchMap, "enable", true);
         this.searchInterval = Math.max(
@@ -197,22 +238,25 @@ public class Config {
                 "keywords",
                 new String[]{"殖", "公知"}
         ));
+        // 随机化关键词顺序
         Collections.shuffle(keywords, new Random(SEED));
         this.searchKeywords.clear();
         this.searchKeywords.addAll(keywords);
 
-        // 评论
+        // 解析评论配置
         Map<String, Object> commentMap = getMap(config, "comment");
         this.commentInterval = Math.max(
                 getInt(commentMap, "interval", 120),
                 MIN_COMMENT_INTERVAL
         );
 
+        // 解析评论冷却配置
         Map<String, Object> cooldownMap = getMap(commentMap, "cooldown");
         this.commentCooldown = getInt(cooldownMap, "hour",   2) * 3600 +
                                getInt(cooldownMap, "minute", 0) * 60 +
                                getInt(cooldownMap, "second", 0);
 
+        // 解析最早发布时间配置
         Map<String, Object> minPubMap = getMap(commentMap, "min_pubdate");
         int year   = getInt(minPubMap, "year",   2000);
         int month  = getInt(minPubMap, "month",  1   );
@@ -225,14 +269,23 @@ public class Config {
                 .atZone(ZoneId.systemDefault())
                 .toEpochSecond();
 
+        // 解析自动清理延迟配置
         Map<String, Object> autoClearMap = getMap(commentMap, "auto_clear_delay");
         this.autoClearDelay = getInt(autoClearMap, "day",  10) * 86400 +
                               getInt(autoClearMap, "hour", 0 ) * 3600;
 
+        // 设置评论格式
         this.autoCommentInstance.setCommentFormat(new RandomComment(commentMap));
     }
 
 
+    /**
+     * 从配置映射中获取子映射
+     *
+     * @param map 配置映射
+     * @param key 键名
+     * @return 子映射
+     */
     @SuppressWarnings("unchecked")
     private static Map<String, Object> getMap(Map<String, Object> map,
                                               String key) {
@@ -240,6 +293,14 @@ public class Config {
         return (Map<String, Object>) MapUtils.getMap(map, key, Map.of());
     }
 
+    /**
+     * 从配置映射中获取整数值
+     *
+     * @param map 配置映射
+     * @param key 键名
+     * @param defaultVal 默认值
+     * @return 整数值
+     */
     private static int getInt(Map<String, Object> map,
                               String key,
                               int defaultVal) {
@@ -248,6 +309,14 @@ public class Config {
         return NumberUtils.toInt(String.valueOf(v), defaultVal);
     }
 
+    /**
+     * 从配置映射中获取布尔值
+     *
+     * @param map 配置映射
+     * @param key 键名
+     * @param defaultVal 默认值
+     * @return 布尔值
+     */
     private static boolean getBoolean(Map<String, Object> map,
                                       String key,
                                       boolean defaultVal) {
@@ -256,6 +325,14 @@ public class Config {
         return v == null ? defaultVal : BooleanUtils.toBoolean(v.toString());
     }
 
+    /**
+     * 从配置映射中获取字符串数组
+     *
+     * @param map 配置映射
+     * @param key 键名
+     * @param defaultVal 默认值
+     * @return 字符串列表
+     */
     private static List<String> getStringArray(Map<String, Object> map,
                                                String key,
                                                String[] defaultVal) {
@@ -268,38 +345,83 @@ public class Config {
     }
 
 
+    /**
+     * 获取登录启用状态
+     *
+     * @return 是否启用登录
+     */
     public boolean isLoginEnabled() {
         return loginEnabled;
     }
 
+    /**
+     * 获取搜索启用状态
+     *
+     * @return 是否启用搜索
+     */
     public boolean isSearchEnabled() {
         return searchEnabled;
     }
 
+    /**
+     * 获取搜索间隔
+     *
+     * @return 搜索间隔（秒）
+     */
     public int getSearchInterval() {
         return searchInterval;
     }
 
+    /**
+     * 获取搜索关键词列表
+     *
+     * @return 搜索关键词列表
+     */
     public List<String> getSearchKeywords() {
         return searchKeywords;
     }
 
+    /**
+     * 获取自动评论实例
+     *
+     * @return 自动评论实例
+     */
     public AutoComment autoCommentInstance() {
         return autoCommentInstance;
     }
 
+    /**
+     * 获取评论间隔
+     *
+     * @return 评论间隔（秒）
+     */
     public int getCommentInterval() {
         return commentInterval;
     }
 
+    /**
+     * 获取评论冷却时间
+     *
+     * @return 评论冷却时间（秒）
+     */
     public int getCommentCooldown() {
         return commentCooldown;
     }
 
+    /**
+     * 获取最早发布时间戳
+     *
+     * @return 最早发布时间戳
+     */
     public long getMinPubdate() {
         return minPubdate;
     }
 
+    /**
+     * 获取自动清理延迟时间
+     *
+     * @return 自动清理延迟时间（秒）
+     */
     public int getAutoClearDelay() {
         return autoClearDelay;
     }

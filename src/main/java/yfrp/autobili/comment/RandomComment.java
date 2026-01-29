@@ -5,7 +5,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * 示例：
+ * 随机评论生成器
+ * 
+ * 支持从配置文件或字符串中解析评论模板和变量，生成随机评论
+ * 
+ * 示例配置格式：
  * <p>
  * 评论模板1:sticker;:var1;
  * <p>
@@ -19,12 +23,18 @@ import java.util.regex.Pattern;
  * <p>
  * var2={②}
  */
-
 public class RandomComment {
 
+    // 评论模板集合
     private final Set<String> templates;
+    // 变量映射表
     private final HashMap<String, Set<String>> vars;
 
+    /**
+     * 从配置对象构造随机评论生成器
+     *
+     * @param config 包含 templates 和 vars 的配置对象
+     */
     public RandomComment(Map<String, Object> config) {
 
         this.templates = new HashSet<>();
@@ -62,6 +72,12 @@ public class RandomComment {
 
     }
 
+    /**
+     * 从字符串构造随机评论生成器
+     * 字符串格式：模板部分 + 分隔符 + 变量部分
+     *
+     * @param rcfStr 配置字符串
+     */
     public RandomComment(String rcfStr) {
         this.templates = new HashSet<>();
         this.vars = new HashMap<>();
@@ -118,14 +134,30 @@ public class RandomComment {
         }
     }
 
+    /**
+     * 获取评论模板集合
+     *
+     * @return 评论模板集合
+     */
     public Set<String> getTemplates() {
         return templates;
     }
 
+    /**
+     * 获取变量映射表
+     *
+     * @return 变量映射表
+     */
     public HashMap<String, Set<String>> getVars() {
         return vars;
     }
 
+    /**
+     * 生成随机评论
+     * 随机选择一个模板，然后替换其中的变量占位符
+     *
+     * @return 生成的随机评论
+     */
     public String generate() {
         Random random = new Random();
 
@@ -133,6 +165,7 @@ public class RandomComment {
             return "";
         }
 
+        // 随机选择一个模板
         List<String> templateList = new ArrayList<>(templates);
         String template = templateList.get(random.nextInt(templateList.size()));
 
@@ -151,7 +184,16 @@ public class RandomComment {
         return result.toString();
     }
 
-    // 递归解析变量（处理嵌套变量的情况）
+    /**
+     * 递归解析变量（处理嵌套变量的情况）
+     * 防止循环引用，确保变量解析的正确性
+     *
+     * @param varName 变量名
+     * @param vars 变量映射表
+     * @param random 随机数生成器
+     * @param visitedVars 已访问的变量集合，用于防止循环引用
+     * @return 解析后的变量值
+     */
     private static String resolveVariable(String varName,
                                           HashMap<String, Set<String>> vars,
                                           Random random,
@@ -193,7 +235,10 @@ public class RandomComment {
         return selectedValue;
     }
 
-    // 测试方法
+    /**
+     * 测试方法
+     * 演示如何使用 RandomComment 类生成随机评论
+     */
     static void main() {
         String testInput = """
                            评论模板1:sticker;:var1;

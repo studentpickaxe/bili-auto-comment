@@ -25,29 +25,54 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
+/**
+ * 评论工作线程类
+ * 负责从待评论视频池中获取视频，检查视频发布时间，然后自动发送评论
+ */
 public class CommentWorker implements Runnable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CommentWorker.class);
 
+    // 已处理视频记录的正则表达式模式（旧版本）
     private static final Pattern commentedLineV1 = Pattern.compile("^(BV[A-Za-z0-9]+);pubdate(\\d+)$");
+    // 已处理视频记录的正则表达式模式（新版本）
     private static final Pattern commentedLineV2 = Pattern.compile("^v2;(BV[A-Za-z0-9]+);(\\d+)$");
 
+    // 已处理视频计数器
     private static final AtomicInteger commentCount = new AtomicInteger(0);
 
+    // 待评论视频队列
     private final BlockingQueue<String> queue = new LinkedBlockingQueue<>(10);
+    // 系统配置
     private final Config config;
 
+    // 待评论视频池
     private final VidPool toComment;
+    // 已评论视频池
     private final VidPool commented;
+    // 上次清理时间
     private long lastClearTime = 0L;
 
+    // 冷却结束时间
     private long cooldownEndTime = 0L;
 
+    // 是否接受新任务
     private volatile boolean accepting = true;
+    // 工作线程
     private volatile Thread workerThread;
+    // WebDriver 实例
     private WebDriver driver;
+    // 自动评论实例
     private final AutoComment commenter;
 
+    /**
+     * 构造函数
+     *
+     * @param config 系统配置
+     * @param commenter 自动评论实例
+     * @param toComment 待评论视频池
+     * @param commented 已评论视频池
+     */
     public CommentWorker(Config config,
                          AutoComment commenter,
                          VidPool toComment,
@@ -58,21 +83,34 @@ public class CommentWorker implements Runnable {
         this.toComment = toComment;
         this.commented = commented;
 
+        // 配置 Chrome 浏览器选项
         ChromeOptions options = new ChromeOptions();
         ChromeOptionUtil.makeLightweight(options);
         ChromeOptionUtil.setProfile(options, "comment");
 
+        // 启动浏览器
         driver = new ChromeDriver(options);
         LOGGER.info("评论浏览器已启动");
         driver.get("https://www.bilibili.com");
     }
 
+    /**
+     * 检查视频发布时间
+     * 根据配置决定是否跳过该视频
+     *
+     * @param bvid 视频 BV 号
+     * @return 是否跳过该视频
+     * @throws IOException IO 异常
+     * @throws InterruptedException 线程中断异常
+     */
     private boolean checkPubDate(@Nonnull String bvid)
             throws IOException,
                    InterruptedException {
 
+        // 获取视频发布时间
         long pubDate = BiliApi.getVidPubDate(bvid);
 
+        // 发布时间无效，可能是视频被删除
         if (pubDate < 0) {
 
             LOGGER.info("视频 {} 发布日期为负 ({})，可能是视频被删除",
@@ -84,6 +122,7 @@ public class CommentWorker implements Runnable {
             return true;
         }
 
+        // 发布时间距今已超过设定的最大时间间隔
         if (config.getAutoClearDelay() > 0 &&
             pubDate < now() - config.getAutoClearDelay()) {
 
@@ -98,6 +137,7 @@ public class CommentWorker implements Runnable {
             return true;
         }
 
+        // 发布时间早于设定的最早发布日期
         if (config.getMinPubdate() > pubDate) {
 
             removeFromToComment(bvid, true);
@@ -114,18 +154,32 @@ public class CommentWorker implements Runnable {
         return false;
     }
 
+    /**
+     * 格式化时间戳为可读字符串
+     *
+     * @param timestampSeconds 时间戳（秒）
+     * @return 格式化后的时间字符串
+     */
     private static String formatTimestamp(long timestampSeconds) {
         return Instant.ofEpochSecond(timestampSeconds)
                 .atZone(ZoneId.systemDefault())
                 .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
     }
 
+    /**
+     * 从待评论视频池中移除视频
+     *
+     * @param bvid 视频 BV 号
+     * @param addToCommented 是否添加到已评论视频池
+     */
     private void removeFromToComment(String bvid,
                                      boolean addToCommented) {
 
+        // 从待评论视频池中移除
         toComment.remove(bvid);
         toComment.saveVideos();
 
+        // 添加到已评论视频池
         if (addToCommented) {
             commented.add("v2;" + bvid + ";" + now());
             commented.saveVideos();
@@ -147,10 +201,19 @@ public class CommentWorker implements Runnable {
 
     }
 
+    /**
+     * 获取当前时间戳
+     *
+     * @return 当前时间戳（秒）
+     */
     private long now() {
         return Instant.now().getEpochSecond();
     }
 
+    /**
+     * 清理已处理的视频记录
+     * 删除超过设定时间的视频记录
+     */
     private void clearCommented() {
 
         List<String> toAdd = new ArrayList<>();
@@ -158,8 +221,9 @@ public class CommentWorker implements Runnable {
         commented.removeIf(line -> {
             var matcher = commentedLineV2.matcher(line);
 
+            // 匹配新版本格式
             if (!matcher.find()) {
-                // v1
+                // v1 格式
                 var matcherV1 = commentedLineV1.matcher(line);
 
                 if (matcherV1.find()) {
@@ -172,6 +236,7 @@ public class CommentWorker implements Runnable {
                 return true;
             }
 
+            // 匹配新版本格式
             var bvid = matcher.group(1);
             var processTime = Long.parseLong(matcher.group(2));
             var autoClearDelay = config.getAutoClearDelay();
@@ -187,9 +252,14 @@ public class CommentWorker implements Runnable {
             return false;
         });
 
+        // 添加需要转换的旧版本记录
         commented.addAll(toAdd);
     }
 
+    /**
+     * 工作线程主循环
+     * 负责从待评论视频池中获取视频，检查视频发布时间，然后自动发送评论
+     */
     @Override
     public void run() {
         this.workerThread = Thread.currentThread();
@@ -201,14 +271,16 @@ public class CommentWorker implements Runnable {
                     break;
                 }
 
+                // 每小时清理一次已处理的视频记录
                 if (now() - lastClearTime > 3600) {
                     clearCommented();
                     lastClearTime = now();
                 }
 
-                // COMMENT
+                // 评论处理
                 if (cooldownEndTime < now()) {
 
+                    // 将最多3个视频添加到队列
                     for (int i = 0; i < 3; i++) {
                         if (toComment.isEmpty()) {
                             break;
@@ -227,6 +299,7 @@ public class CommentWorker implements Runnable {
                     comment();
                 }
 
+                // 等待下一次评论
                 try {
                     if (accepting) {
 
@@ -249,6 +322,10 @@ public class CommentWorker implements Runnable {
         }
     }
 
+    /**
+     * 执行评论
+     * 从队列中获取视频，检查是否已处理，然后发送评论
+     */
     private void comment() {
 
         while (!queue.isEmpty()) {
@@ -264,6 +341,7 @@ public class CommentWorker implements Runnable {
                 continue;
             }
 
+            // 检查是否已处理
             if (commented.hasVid(bvid)) {
 
                 commented.remove(bvid);
@@ -274,6 +352,7 @@ public class CommentWorker implements Runnable {
 
             try {
 
+                // 检查视频发布时间
                 if (checkPubDate(bvid)) {
                     continue;
                 }
@@ -284,7 +363,9 @@ public class CommentWorker implements Runnable {
             }
 
             try {
+                // 重新加载配置
                 config.loadConfig();
+                // 发送评论
                 if (commenter.comment(driver, bvid)) {
                     LOGGER.info("已处理 {} 个视频", commentCount.addAndGet(1));
                     removeFromToComment(bvid, true);
@@ -295,6 +376,7 @@ public class CommentWorker implements Runnable {
                 recoverDriver();
 
             } catch (CommentCooldownException e) {
+                // 触发风控，进入冷却期
                 var cd = config.getCommentCooldown();
                 LOGGER.warn("触发风控，暂停自动评论 {}h {}min {}s",
                         cd / 3600,
@@ -314,13 +396,19 @@ public class CommentWorker implements Runnable {
 
     }
 
+    /**
+     * 恢复浏览器
+     * 当浏览器出现异常时，关闭当前浏览器并重新启动
+     */
     private synchronized void recoverDriver() {
         close();
         try {
+            // 配置 Chrome 浏览器选项
             ChromeOptions options = new ChromeOptions();
             ChromeOptionUtil.makeLightweight(options);
             ChromeOptionUtil.setProfile(options, "comment");
 
+            // 重新启动浏览器
             driver = new ChromeDriver(options);
             driver.get("https://www.bilibili.com");
             LOGGER.info("评论浏览器已恢复");
@@ -329,6 +417,9 @@ public class CommentWorker implements Runnable {
         }
     }
 
+    /**
+     * 关闭工作线程
+     */
     public void shutdown() {
         accepting = false;
         if (workerThread != null) {
@@ -336,6 +427,9 @@ public class CommentWorker implements Runnable {
         }
     }
 
+    /**
+     * 关闭浏览器
+     */
     public synchronized void close() {
         if (driver != null) {
             try {
