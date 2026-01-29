@@ -1,11 +1,12 @@
 login:
-  # 第一次使用请登录
   # 无法重载
+  # could NOT be reloaded
   enable: NO
 
 
 search:
   # 无法重载
+  # could NOT be reloaded
   enable: YES
 
   interval: 20
@@ -53,7 +54,7 @@ comment:
     second: 0
 
   auto_clear_delay:
-    day:    3
+    day:    10
     hour:   0
 
   templates:

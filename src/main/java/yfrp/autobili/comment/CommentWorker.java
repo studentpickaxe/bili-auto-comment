@@ -18,6 +18,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -66,46 +67,41 @@ public class CommentWorker implements Runnable {
         driver.get("https://www.bilibili.com");
     }
 
-    // 提交评论任务
-    public void submit(String bvid) {
-        if (!accepting) {
-            return;
-        }
-
-        if (cooldownEndTime < now() && !queue.offer(bvid)) {
-            LOGGER.warn("评论队列已满，跳过视频 {}", bvid);
-        }
-    }
-
-    public void skip(String bvid) {
-        afterComment(bvid);
-    }
-
-    @Nonnull
-    private pubdateCheckResult checkPubDate(@Nonnull String bvid)
+    private boolean checkPubDate(@Nonnull String bvid)
             throws IOException,
                    InterruptedException {
 
-        boolean skip = false;
         long pubDate = BiliApi.getVidPubDate(bvid);
 
-        // 2000-01-01 00:00:00
-        if (config.getMinPubdate() >= 946656000 &&
-            pubDate < config.getMinPubdate()) {
+        if (config.getAutoClearDelay() > 0 &&
+            pubDate < now() - config.getAutoClearDelay()) {
 
-            LOGGER.info("视频 {} 发布日期 {} 早于设定的最早发布日期 {}，已跳过该视频",
+            removeFromToComment(bvid, false);
+
+            LOGGER.info("视频 {} 发布日期 {} 距今已超过设定的最大时间间隔 {}d {}h",
+                    bvid,
+                    formatTimestamp(pubDate),
+                    config.getAutoClearDelay() / 86400,
+                    (config.getAutoClearDelay() % 86400) / 3600
+            );
+
+            return true;
+        }
+
+        if (config.getMinPubdate() > pubDate) {
+
+            removeFromToComment(bvid, true);
+
+            LOGGER.info("视频 {} 发布日期 {} 早于设定的最早发布日期 {}",
                     bvid,
                     formatTimestamp(pubDate),
                     formatTimestamp(config.getMinPubdate())
             );
-            skip = true;
 
+            return true;
         }
 
-        return new pubdateCheckResult(skip, pubDate);
-    }
-
-    private record pubdateCheckResult(boolean skip, long pubdate) {
+        return false;
     }
 
     private static String formatTimestamp(long timestampSeconds) {
@@ -114,17 +110,31 @@ public class CommentWorker implements Runnable {
                 .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
     }
 
-    private void afterComment(String bvid) {
+    private void removeFromToComment(String bvid,
+                                     boolean addToCommented) {
+
         toComment.remove(bvid);
         toComment.saveVideos();
 
-        commented.add("v2;" + bvid + ";" + now());
-        commented.saveVideos();
+        if (addToCommented) {
+            commented.add("v2;" + bvid + ";" + now());
+            commented.saveVideos();
 
-        LOGGER.info(
-                "视频 {} 已处理完成 | 待评论: {}, 已处理: {}",
-                bvid, toComment.size(), commented.size()
-        );
+            LOGGER.info(
+                    "视频 {} 已处理完成 | 待评论: {}, 已处理: {}",
+                    bvid,
+                    toComment.size(),
+                    commented.size()
+            );
+        } else {
+            LOGGER.info(
+                    "已跳过视频 {} | 待评论: {}, 已处理: {}",
+                    bvid,
+                    toComment.size(),
+                    commented.size()
+            );
+        }
+
     }
 
     private long now() {
@@ -175,6 +185,7 @@ public class CommentWorker implements Runnable {
         this.workerThread = Thread.currentThread();
 
         try {
+
             while (accepting) {
                 if (!accepting) {
                     break;
@@ -185,78 +196,112 @@ public class CommentWorker implements Runnable {
                     lastClearTime = now();
                 }
 
+                // COMMENT
                 if (cooldownEndTime < now()) {
 
-                    String bvid;
-                    try {
-                        bvid = queue.poll(1, TimeUnit.SECONDS);
-                    } catch (InterruptedException e) {
-                        continue;
-                    }
+                    for (int i = 0; i < 3; i++) {
+                        if (toComment.isEmpty()) {
+                            break;
+                        }
 
-                    if (bvid == null || bvid.isBlank()) {
-                        continue;
-                    }
-
-                    if (commented.hasVid(bvid)) {
-
-                        commented.remove(bvid);
-                        commented.saveVideos();
-                        LOGGER.info("视频 {} 已被处理，跳过该视频", bvid);
-                        continue;
-                    }
-
-                    try {
-                        if (checkPubDate(bvid).skip()) {
-                            skip(bvid);
+                        var bvid = toComment.getVidFromPool();
+                        if (bvid == null) {
                             continue;
                         }
 
-                    } catch (IOException | InterruptedException e) {
-                        LOGGER.error("获取视频 {} 发布日期时出错", bvid, e);
-                        continue;
-                    }
-
-                    try {
-                        config.loadConfig();
-                        if (commenter.comment(driver, bvid)) {
-                            LOGGER.info("已处理 {} 个视频", commentCount.addAndGet(1));
-                            afterComment(bvid);
-                        }
-
-                    } catch (WebDriverException e) {
-                        LOGGER.warn("浏览器异常，尝试恢复: {}", e.getMessage());
-                        recoverDriver();
-
-                    } catch (CommentCooldownException e) {
-                        var cd = config.getCommentCooldown();
-                        LOGGER.warn("触发风控，暂停自动评论 {}h {}min {}s",
-                                cd / 3600,
-                                (cd % 3600) / 60,
-                                cd % 60
-                        );
-                        cooldownEndTime = now() + cd;
-
-                    } catch (Exception e) {
-                        if (accepting) {
-                            LOGGER.error("评论视频 {} 时异常", bvid, e);
+                        if (!queue.offer(bvid)) {
+                            break;
                         }
                     }
+
+                    comment();
                 }
 
                 try {
                     if (accepting) {
-                        Thread.sleep(config.getCommentInterval() * 1000L);
+
+                        var interval = config.getCommentInterval();
+                        var t = new Random().nextInt(750, 1251);
+
+                        for (int i = 0; i < interval; i++) {
+                            Thread.sleep(t);
+                        }
                     }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     break;
                 }
             }
+
         } finally {
             close();
             LOGGER.info("评论线程已结束，已评论 {} 个视频", commentCount.get());
         }
+    }
+
+    private void comment() {
+
+        while (!queue.isEmpty()) {
+
+            String bvid;
+            try {
+                bvid = queue.poll(1, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                continue;
+            }
+
+            if (bvid == null || bvid.isBlank()) {
+                continue;
+            }
+
+            if (commented.hasVid(bvid)) {
+
+                commented.remove(bvid);
+                commented.saveVideos();
+                LOGGER.info("视频 {} 已被处理，跳过该视频", bvid);
+                continue;
+            }
+
+            try {
+
+                if (checkPubDate(bvid)) {
+                    continue;
+                }
+
+            } catch (IOException | InterruptedException e) {
+                LOGGER.error("获取视频 {} 发布日期时出错", bvid, e);
+                continue;
+            }
+
+            try {
+                config.loadConfig();
+                if (commenter.comment(driver, bvid)) {
+                    LOGGER.info("已处理 {} 个视频", commentCount.addAndGet(1));
+                    removeFromToComment(bvid, true);
+                }
+
+            } catch (WebDriverException e) {
+                LOGGER.warn("浏览器异常，尝试恢复: {}", e.getMessage());
+                recoverDriver();
+
+            } catch (CommentCooldownException e) {
+                var cd = config.getCommentCooldown();
+                LOGGER.warn("触发风控，暂停自动评论 {}h {}min {}s",
+                        cd / 3600,
+                        (cd % 3600) / 60,
+                        cd % 60
+                );
+                cooldownEndTime = now() + cd;
+
+            } catch (Exception e) {
+                if (accepting) {
+                    LOGGER.error("评论视频 {} 时异常", bvid, e);
+                }
+            }
+
+            return;
+        }
+
     }
 
     private synchronized void recoverDriver() {

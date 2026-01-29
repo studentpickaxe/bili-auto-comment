@@ -35,7 +35,7 @@ public class AutoComment {
             if (!editor) return false;
             
             editor.textContent = arguments[1];
-            editor.dispatchEvent(new Event('input', { bubbles: true }));
+            editor.dispatchEvent(new Event('input', {bubbles: true}));
             return true;
             """;
     private static final String SCRIPT_CLICK_SEND_BUTTON =
@@ -49,24 +49,24 @@ public class AutoComment {
     private static final String SCRIPT_CHECK_TOAST =
             """
             window.biliToasts = [];
-                const observer = new MutationObserver((mutations) => {
-                  mutations.forEach((mutation) => {
-                    mutation.addedNodes.forEach((node) => {
-                      // 检查节点本身或其子节点是否有 b-toast 类
-                      if (node.nodeType === 1) {
-                        let toastNode = node.classList.contains('b-toast') ? node : node.querySelector('.b-toast');
-                        if (toastNode) {
-                            const content = toastNode.innerText.trim();
-                            if (content) {
-                                window.biliToasts.push(content);
-                                console.log('[监视器] 捕获到 toast: ' + content);
-                            }
-                        }
+            const observer = new MutationObserver((mutations) => {
+              mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                  // 检查节点本身或其子节点是否有 b-toast 类
+                  if (node.nodeType === 1) {
+                    let toastNode = node.classList.contains('b-toast') ? node : node.querySelector('.b-toast');
+                    if (toastNode) {
+                      const content = toastNode.innerText.trim();
+                      if (content) {
+                        window.biliToasts.push(content);
+                        console.log('[监视器] 捕获到 toast: ' + content);
                       }
-                    });
-                  });
+                    }
+                  }
                 });
-                observer.observe(document.body, { childList: true, subtree: true });
+              });
+            });
+            observer.observe(document.body, {childList: true, subtree: true});
             """;
     private static final String SCRIPT_GET_TOASTS =
             """
@@ -132,6 +132,10 @@ public class AutoComment {
 
             for (var t : toasts) {
 
+                if (t == null || t.isBlank()) {
+                    continue;
+                }
+
                 if (t.equals("发送成功")) {
                     LOGGER.info("评论发送成功");
                     return;
@@ -141,12 +145,14 @@ public class AutoComment {
                     throw new CommentCooldownException();
                 }
 
+                LOGGER.warn("评论发送失败: {}", t);
+                return;
+
             }
 
             Thread.sleep(500);
         }
 
-        LOGGER.warn("评论发送失败，可能是 up 主关闭评论区或设置权限");
     }
 
 

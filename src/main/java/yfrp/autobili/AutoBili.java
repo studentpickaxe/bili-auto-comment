@@ -15,7 +15,6 @@ import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 public class AutoBili {
     private static final Logger LOGGER = LoggerFactory.getLogger(AutoBili.class);
@@ -78,16 +77,25 @@ public class AutoBili {
     }
 
     public void start() {
+
+        LOGGER.info(
+                "任务已启动: 搜索[间隔 {}s], 评论[间隔 {}s]",
+                config.getSearchInterval(),
+                config.getCommentInterval()
+        );
+        LOGGER.info("配置的部分参数可修改后自动重载");
+
         try {
             initialize();
-            scheduleJobs();
             listenForStopCommand();
             awaitShutdown();
+
         } catch (Exception e) {
             LOGGER.error("运行过程中发生错误", e);
         } finally {
             shutdown();
         }
+
     }
 
     private void initialize() {
@@ -108,23 +116,6 @@ public class AutoBili {
             searchThread.start();
         }
 
-    }
-
-    private void scheduleJobs() {
-
-        scheduler.scheduleAtFixedRate(
-                new CommentTask(),
-                0,
-                config.getCommentInterval(),
-                TimeUnit.SECONDS
-        );
-
-        LOGGER.info(
-                "任务已启动: 搜索[间隔 {}s], 评论[间隔 {}s]",
-                config.getSearchInterval(),
-                config.getCommentInterval()
-        );
-        LOGGER.info("配置的部分参数可修改后自动重载");
     }
 
     private void listenForStopCommand() {
@@ -178,31 +169,6 @@ public class AutoBili {
         LOGGER.info("服务已关闭");
     }
 
-
-    // 评论任务
-    private class CommentTask implements Runnable {
-        @Override
-        public void run() {
-            try {
-                processComment();
-            } catch (Exception e) {
-                LOGGER.error("评论任务执行失败", e);
-            }
-        }
-
-        private void processComment() {
-            String bvid = BVIDS_TO_COMMENT.getVidFromPool();
-
-            if (bvid == null) {
-                LOGGER.warn("未获取到可评论的视频");
-                return;
-            }
-
-            // 评论
-            commentWorker.submit(bvid);
-        }
-
-    }
 
     private static void login() {
         var options = new ChromeOptions();
