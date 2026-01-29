@@ -1,11 +1,8 @@
 package yfrp.autobili;
 
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import yfrp.autobili.browser.ChromeOptionUtil;
+import yfrp.autobili.browser.Login;
 import yfrp.autobili.comment.CommentWorker;
 import yfrp.autobili.config.Config;
 import yfrp.autobili.vid.SearchWorker;
@@ -70,7 +67,7 @@ public class AutoBili {
         var config = Config.getInstance();
 
         if (config.isLoginEnabled()) {
-            login();
+            Login.login();
         } else {
             new AutoBili(Config.getInstance()).start();
         }
@@ -167,32 +164,5 @@ public class AutoBili {
         }
 
         LOGGER.info("服务已关闭");
-    }
-
-
-    private static void login() {
-        var options = new ChromeOptions();
-        ChromeOptionUtil.setProfile(options, "comment");
-
-        WebDriver driver = new ChromeDriver(options);
-
-        try {
-            LOGGER.info("正在打开浏览器...");
-            LOGGER.info("请登录网站并设置（如自动播放、分辨率）");
-            LOGGER.info("按 Enter 退出程序");
-
-            driver.get("https://www.bilibili.com");
-            IO.readln();
-
-            Thread.sleep(1000);
-
-            LOGGER.info("已保存登陆状态和网站设置");
-            LOGGER.info("可将配置中的 'login.enable' 设为 NO 以跳过此步骤");
-        } catch (InterruptedException e) {
-            LOGGER.error("登录时出错", e);
-            Thread.currentThread().interrupt();
-        } finally {
-            driver.quit();
-        }
     }
 }
