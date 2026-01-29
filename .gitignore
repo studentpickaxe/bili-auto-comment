@@ -38,8 +38,6 @@ build/
 ### Mac OS ###
 .DS_Store
 
-bilibili_cookies.txt
-bilibili_cookies_2.txt
 bvids_to_comment.txt
 bvids_commented.txt
 
@@ -48,3 +46,5 @@ chrome-profiles/
 logs/
 
 src/test/
+
+.idea/
