@@ -15,6 +15,7 @@ import java.util.concurrent.ScheduledExecutorService;
 
 /**
  * Bilibili 自动评论系统主类
+ * <p>
  * 负责协调搜索、评论等核心功能模块的运行
  */
 public class AutoBili {
@@ -42,6 +43,7 @@ public class AutoBili {
 
     /**
      * 构造函数
+     * <p>
      * 初始化系统所需的各种组件和线程
      *
      * @param config 系统配置
@@ -80,6 +82,7 @@ public class AutoBili {
 
     /**
      * 创建线程的工厂方法
+     * <p>
      * 设置线程为非守护线程
      *
      * @param r 线程要执行的任务
@@ -93,6 +96,7 @@ public class AutoBili {
 
     /**
      * 程序入口点
+     * <p>
      * 根据配置决定是登录还是直接启动主程序
      */
     static void main() {
@@ -109,6 +113,7 @@ public class AutoBili {
 
     /**
      * 启动主程序
+     * <p>
      * 包括初始化、监听停止命令、等待关闭等步骤
      */
     public void start() {
@@ -141,6 +146,7 @@ public class AutoBili {
 
     /**
      * 初始化系统
+     * <p>
      * 加载视频列表，启动工作线程
      */
     private void initialize() {
@@ -191,6 +197,7 @@ public class AutoBili {
 
     /**
      * 等待关闭信号
+     * <p>
      * 阻塞当前线程直到收到关闭信号
      */
     private void awaitShutdown() {
@@ -205,6 +212,7 @@ public class AutoBili {
 
     /**
      * 关闭系统
+     * <p>
      * 停止所有服务和线程，确保资源正确释放
      */
     private void shutdown() {

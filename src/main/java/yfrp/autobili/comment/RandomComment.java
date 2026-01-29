@@ -4,24 +4,9 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+
 /**
  * 随机评论生成器
- * 
- * 支持从配置文件或字符串中解析评论模板和变量，生成随机评论
- * 
- * 示例配置格式：
- * <p>
- * 评论模板1:sticker;:var1;
- * <p>
- * :sticker;:var2;评论模板2
- * <p>
- * {{{{{{
- * <p>
- * sticker={[星星眼]'[打call]'[滑稽]'[妙啊]'[嗑瓜子]'[呲牙]'[大笑]'[偷笑]'[鼓掌]'[嘘声]'[捂眼]'[惊喜]'[哈欠]'[抓狂]}
- * <p>
- * var1={:var2;'①}
- * <p>
- * var2={②}
  */
 public class RandomComment {
 
@@ -74,6 +59,7 @@ public class RandomComment {
 
     /**
      * 从字符串构造随机评论生成器
+     * <p>
      * 字符串格式：模板部分 + 分隔符 + 变量部分
      *
      * @param rcfStr 配置字符串
@@ -154,6 +140,7 @@ public class RandomComment {
 
     /**
      * 生成随机评论
+     * <p>
      * 随机选择一个模板，然后替换其中的变量占位符
      *
      * @return 生成的随机评论
@@ -186,6 +173,7 @@ public class RandomComment {
 
     /**
      * 递归解析变量（处理嵌套变量的情况）
+     * <p>
      * 防止循环引用，确保变量解析的正确性
      *
      * @param varName 变量名
@@ -237,6 +225,7 @@ public class RandomComment {
 
     /**
      * 测试方法
+     * <p>
      * 演示如何使用 RandomComment 类生成随机评论
      */
     static void main() {

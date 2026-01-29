@@ -2,6 +2,7 @@ package yfrp.autobili.comment;
 
 /**
  * 评论冷却异常
+ * <p>
  * 当评论发送过于频繁，触发平台冷却机制时抛出此异常
  */
 public class CommentCooldownException

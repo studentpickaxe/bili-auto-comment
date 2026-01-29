@@ -27,6 +27,7 @@ import java.util.regex.Pattern;
 
 /**
  * 评论工作线程类
+ * <p>
  * 负责从待评论视频池中获取视频，检查视频发布时间，然后自动发送评论
  */
 public class CommentWorker implements Runnable {
@@ -96,6 +97,7 @@ public class CommentWorker implements Runnable {
 
     /**
      * 检查视频发布时间
+     * <p>
      * 根据配置决定是否跳过该视频
      *
      * @param bvid 视频 BV 号
@@ -212,6 +214,7 @@ public class CommentWorker implements Runnable {
 
     /**
      * 清理已处理的视频记录
+     * <p>
      * 删除超过设定时间的视频记录
      */
     private void clearCommented() {
@@ -258,6 +261,7 @@ public class CommentWorker implements Runnable {
 
     /**
      * 工作线程主循环
+     * <p>
      * 负责从待评论视频池中获取视频，检查视频发布时间，然后自动发送评论
      */
     @Override
@@ -324,6 +328,7 @@ public class CommentWorker implements Runnable {
 
     /**
      * 执行评论
+     * <p>
      * 从队列中获取视频，检查是否已处理，然后发送评论
      */
     private void comment() {
@@ -398,6 +403,7 @@ public class CommentWorker implements Runnable {
 
     /**
      * 恢复浏览器
+     * <p>
      * 当浏览器出现异常时，关闭当前浏览器并重新启动
      */
     private synchronized void recoverDriver() {

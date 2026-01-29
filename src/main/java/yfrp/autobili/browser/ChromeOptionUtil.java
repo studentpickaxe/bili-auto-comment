@@ -8,12 +8,14 @@ import java.util.Map;
 
 /**
  * Chrome 浏览器选项工具类
+ * <p>
  * 提供配置 Chrome 浏览器选项的静态方法
  */
 public class ChromeOptionUtil {
 
     /**
      * 设置 Chrome 用户配置文件
+     * <p>
      * 将浏览器数据保存到指定的配置文件目录中
      *
      * @param options Chrome 选项对象
@@ -32,6 +34,7 @@ public class ChromeOptionUtil {
 
     /**
      * 使 Chrome 浏览器轻量化
+     * <p>
      * 通过禁用不必要的功能和特性来提高性能和减少资源占用
      *
      * @param options Chrome 选项对象

@@ -18,6 +18,7 @@ import java.util.regex.Pattern;
 
 /**
  * 搜索工作线程类
+ * <p>
  * 负责根据关键词搜索视频，并将搜索到的视频添加到待评论视频池中
  */
 public class SearchWorker implements Runnable {
@@ -72,6 +73,7 @@ public class SearchWorker implements Runnable {
 
     /**
      * 工作线程主循环
+     * <p>
      * 负责根据关键词搜索视频
      */
     @Override
@@ -106,6 +108,7 @@ public class SearchWorker implements Runnable {
 
     /**
      * 恢复浏览器
+     * <p>
      * 当浏览器出现异常时，关闭当前浏览器并重新启动
      */
     private synchronized void recoverDriver() {
@@ -127,6 +130,7 @@ public class SearchWorker implements Runnable {
 
     /**
      * 执行一次搜索
+     * <p>
      * 根据关键词搜索视频，并将搜索到的视频添加到待评论视频池中
      *
      * @param keyword 搜索关键词
@@ -163,6 +167,7 @@ public class SearchWorker implements Runnable {
 
     /**
      * 提取 BVID 的方法
+     * <p>
      * 从搜索结果页面中提取所有视频的 BV 号
      *
      * @param driver WebDriver 实例
@@ -196,6 +201,7 @@ public class SearchWorker implements Runnable {
 
     /**
      * 获取下一个关键词
+     * <p>
      * 按顺序循环使用关键词列表中的关键词
      *
      * @return 下一个关键词

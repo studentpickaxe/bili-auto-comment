@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Bilibili 登录工具类
+ * <p>
  * 提供手动登录功能，用于设置浏览器配置和用户登录状态
  */
 public class Login {
@@ -15,7 +16,9 @@ public class Login {
 
     /**
      * 执行登录流程
+     * <p>
      * 打开浏览器，导航到 Bilibili 网站，等待用户手动登录和设置
+     * <p>
      * 登录完成后按 Enter 键退出程序
      */
     public static void login() {

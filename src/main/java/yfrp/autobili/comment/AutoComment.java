@@ -14,6 +14,7 @@ import java.util.List;
 
 /**
  * Bilibili 自动评论功能类
+ * <p>
  * 负责在指定视频下自动发送评论
  */
 public class AutoComment {
@@ -169,6 +170,7 @@ public class AutoComment {
 
     /**
      * 检查评论发送结果
+     * <p>
      * 通过检查 Toast 消息来判断评论是否发送成功
      *
      * @param driver WebDriver 实例
@@ -219,6 +221,7 @@ public class AutoComment {
 
     /**
      * 使用 Selenium 发送评论
+     * <p>
      * 通过 JavaScript 操作 Shadow DOM 中的评论框
      *
      * @param driver WebDriver 实例
@@ -273,6 +276,7 @@ public class AutoComment {
 
     /**
      * 滚动到评论区
+     * <p>
      * 将页面滚动到评论区位置，确保评论区可见
      *
      * @param driver WebDriver 实例

@@ -21,6 +21,7 @@ import java.util.*;
 
 /**
  * 系统配置类
+ * <p>
  * 负责加载和管理应用程序的配置信息
  */
 public class Config {
@@ -148,6 +149,7 @@ public class Config {
 
     /**
      * 构造函数
+     * <p>
      * 检查配置文件是否存在，如果不存在则创建默认配置文件
      *
      * @param path 配置文件路径
@@ -162,6 +164,7 @@ public class Config {
 
     /**
      * 获取配置实例
+     * <p>
      * 单例模式，确保全局只有一个配置实例
      *
      * @return 配置实例
@@ -175,6 +178,7 @@ public class Config {
 
     /**
      * 重新加载配置
+     * <p>
      * 从配置文件中重新读取配置信息
      */
     public void loadConfig() {
@@ -214,6 +218,7 @@ public class Config {
 
     /**
      * 解析配置文件
+     * <p>
      * 将 YAML 配置文件解析为 Java 对象
      *
      * @param config 配置对象
