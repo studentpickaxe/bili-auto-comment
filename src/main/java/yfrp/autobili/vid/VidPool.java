@@ -64,6 +64,10 @@ public class VidPool {
         }
     }
 
+    public boolean isEmpty() {
+        return vidPool.isEmpty();
+    }
+
     public boolean hasVid(String bvid) {
         return vidPool.stream()
                 .anyMatch(line -> line.equals(bvid) || line.contains(bvid));
