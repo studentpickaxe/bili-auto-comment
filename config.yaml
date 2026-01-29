@@ -38,7 +38,7 @@ search:
 
 
 comment:
-  interval: 60
+  interval: 120
 
   cooldown:
     hour:   2

@@ -46,7 +46,7 @@ public class Config {
             
             
             comment:
-              interval: 60
+              interval: 120
             
               cooldown:
                 hour:   2
@@ -204,7 +204,7 @@ public class Config {
         // 评论
         Map<String, Object> commentMap = getMap(config, "comment");
         this.commentInterval = Math.max(
-                getInt(commentMap, "interval", 60),
+                getInt(commentMap, "interval", 120),
                 MIN_COMMENT_INTERVAL
         );
 
