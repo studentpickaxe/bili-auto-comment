@@ -63,8 +63,9 @@ public class Login {
                 }
 
                 IO.println();
-                IO.println("请完整复制下方的 Data URL，并在浏览器中打开以扫码登录：");
+                IO.println("请完整复制以下 Data URL，并在浏览器中打开以扫码登录：");
                 IO.println(qrBase64);
+                IO.println("请完整复制以上 Data URL，并在浏览器中打开以扫码登录：");
                 IO.println();
 
                 // 检测登录成功
