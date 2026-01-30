@@ -1,10 +1,17 @@
 package yfrp.autobili.browser;
 
+import org.openqa.selenium.By;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.time.Duration;
 
 /**
  * Bilibili 登录工具类
@@ -13,6 +20,54 @@ import org.slf4j.LoggerFactory;
  */
 public class Login {
     private static final Logger LOGGER = LoggerFactory.getLogger(Login.class);
+
+
+    /**
+     * 在无头模式下登录
+     *
+     * @param driver WebDriver 实例
+     */
+    public static void loginHeadless(WebDriver driver) {
+
+        LOGGER.info("正在获取登录二维码");
+        while (true) {
+
+            driver.get("https://www.bilibili.com/");
+            WebDriverWait wait1 = new WebDriverWait(driver, Duration.ofSeconds(5));
+            By loginBtnLocator = By.cssSelector(".header-login-entry");
+            By qrCodeLocator = By.cssSelector(".login-scan-box img");
+
+            // 点击登录按钮
+            WebElement loginBtn = wait1.until(ExpectedConditions.elementToBeClickable(loginBtnLocator));
+            loginBtn.click();
+
+            // 提取二维码图片 Base64
+            WebElement qrCodeImg = wait1.until(ExpectedConditions.visibilityOfElementLocated(qrCodeLocator));
+            var qrBase64 = qrCodeImg.getAttribute("src");
+
+            IO.println();
+            IO.println("请完整复制下方的 Data URL，并在浏览器中打开以扫码登录：");
+            IO.println(qrBase64);
+            IO.println();
+
+            // 检测登录成功
+            try {
+                WebDriverWait wait2 = new WebDriverWait(driver, Duration.ofSeconds(120));
+
+                var isLoginBtnHidden = wait2.until(ExpectedConditions.invisibilityOfElementLocated(loginBtnLocator));
+                if (isLoginBtnHidden) {
+                    LOGGER.info("登录成功");
+                    Thread.sleep(1000);
+                    return;
+                }
+
+            } catch (TimeoutException | InterruptedException _) {
+                LOGGER.info("正在重新获取二维码，旧二维码还有大约 60s 有效时间");
+            }
+
+        }
+
+    }
 
     /**
      * 执行登录流程
