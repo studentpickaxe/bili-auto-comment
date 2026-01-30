@@ -92,7 +92,7 @@ public class CommentWorker implements Runnable {
         // 启动浏览器
         driver = new ChromeDriver(options);
         LOGGER.info("评论浏览器已启动");
-        driver.get("https://www.bilibili.com");
+        driver.get(config.getUrlHomepage());
     }
 
     /**
@@ -110,7 +110,7 @@ public class CommentWorker implements Runnable {
                    InterruptedException {
 
         // 获取视频发布时间
-        long pubDate = BiliApi.getVidPubDate(bvid);
+        long pubDate = BiliApi.getVidPubDate(config.getUrlVideoApi(bvid));
 
         // 发布时间无效，可能是视频被删除
         if (pubDate < 0) {
@@ -371,7 +371,7 @@ public class CommentWorker implements Runnable {
                 // 重新加载配置
                 config.loadConfig();
                 // 发送评论
-                if (commenter.comment(driver, bvid)) {
+                if (commenter.comment(driver, bvid, config.getUrlVideo(bvid))) {
                     LOGGER.info("已处理 {} 个视频", commentCount.addAndGet(1));
                     removeFromToComment(bvid, true);
                 }
@@ -416,7 +416,7 @@ public class CommentWorker implements Runnable {
 
             // 重新启动浏览器
             driver = new ChromeDriver(options);
-            driver.get("https://www.bilibili.com");
+            driver.get(config.getUrlHomepage());
             LOGGER.info("评论浏览器已恢复");
         } catch (Exception e) {
             LOGGER.error("评论浏览器恢复失败", e);

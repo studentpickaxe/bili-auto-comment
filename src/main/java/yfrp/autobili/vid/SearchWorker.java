@@ -68,7 +68,7 @@ public class SearchWorker implements Runnable {
         // 启动浏览器
         this.driver = new ChromeDriver(options);
         LOGGER.info("搜索浏览器已启动");
-        driver.get("https://www.bilibili.com");
+        driver.get(config.getUrlHomepage());
     }
 
     /**
@@ -121,7 +121,7 @@ public class SearchWorker implements Runnable {
 
             // 重新启动浏览器
             driver = new ChromeDriver(options);
-            driver.get("https://www.bilibili.com");
+            driver.get(config.getUrlHomepage());
             LOGGER.info("浏览器已恢复");
         } catch (Exception e) {
             LOGGER.error("浏览器恢复失败", e);
@@ -142,8 +142,7 @@ public class SearchWorker implements Runnable {
         LOGGER.info("开始搜索关键词 '{}'", keyword);
 
         // 构建搜索 URL
-        driver.get("https://search.bilibili.com/all?keyword=" + keyword +
-                   "&from_source=webtop_search&search_source=5&order=pubdate");
+        driver.get(config.getUrlSearch(keyword));
 
         // 等待页面加载
         Thread.sleep(3000);

@@ -105,7 +105,8 @@ public class AutoComment {
      * @throws CommentCooldownException 评论冷却异常
      */
     public boolean comment(WebDriver driver,
-                           String bvid)
+                           String bvid,
+                           String url)
             throws InterruptedException,
                    CommentCooldownException {
 
@@ -118,14 +119,11 @@ public class AutoComment {
             throw new IllegalStateException("Comment format not set");
         }
 
-        // 构建视频链接
-        String vidLink = "https://www.bilibili.com/video/" + bvid + "/";
-
         // 创建等待对象
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(TIMEOUT));
 
         // 导航到视频页面
-        driver.get(vidLink);
+        driver.get(url);
 
         // 等待评论区元素加载
         wait.until(ExpectedConditions.presenceOfElementLocated(By.tagName("bili-comments")));
