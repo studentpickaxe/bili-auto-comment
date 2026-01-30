@@ -45,7 +45,7 @@ comment:
     minute: 0
     second: 0
 
-  min_pubdate:
+  min-pubdate:
     year:   2000
     month:  1
     day:    1
@@ -53,7 +53,7 @@ comment:
     minute: 0
     second: 0
 
-  auto_clear_delay:
+  auto-clear-delay:
     day:    10
     hour:   0
 
@@ -97,3 +97,11 @@ comment:
       - '✌赢了'
       - '赢了✌'
       - '🥇赢了'
+
+
+urls:
+  placeholder: '{}'
+  homepage:    'https://www.bilibili.com/'
+  video-api:   'https://api.bilibili.com/x/web-interface/view?bvid={}'
+  video:       'https://www.bilibili.com/video/{}/'
+  search:      'https://search.bilibili.com/all?keyword={}&from_source=webtop_search&search_source=5&order=pubdate'

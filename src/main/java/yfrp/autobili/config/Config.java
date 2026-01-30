@@ -18,6 +18,7 @@ import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
+import java.util.regex.Pattern;
 
 /**
  * 系统配置类
@@ -60,7 +61,7 @@ public class Config {
                 minute: 0
                 second: 0
             
-              min_pubdate:
+              min-pubdate:
                 year:   2000
                 month:  1
                 day:    1
@@ -68,7 +69,7 @@ public class Config {
                 minute: 0
                 second: 0
             
-              auto_clear_delay:
+              auto-clear-delay:
                 day:    10
                 hour:   0
             
@@ -113,6 +114,14 @@ public class Config {
                   - '赢了✌'
                   - '🥇赢了'
             
+            
+            urls:
+              placeholder: '{}'
+              homepage:    'https://www.bilibili.com/'
+              video-api:   'https://api.bilibili.com/x/web-interface/view?bvid={}'
+              video:       'https://www.bilibili.com/video/{}/'
+              search:      'https://search.bilibili.com/all?keyword={}&from_source=webtop_search&search_source=5&order=pubdate'
+            
             """;
 
 
@@ -142,6 +151,17 @@ public class Config {
     private long minPubdate;
     // 自动清理延迟时间（秒）
     private int autoClearDelay;
+
+    // URL 替换占位符
+    private String urlPlaceholder;
+    // 主页 URL
+    private String urlHomepage;
+    // 视频 API URL
+    private String urlVideoApi;
+    // 视频页面 URL
+    private String urlVideo;
+    // 搜索页面 URL
+    private String urlSearch;
 
     // 自动评论实例
     private final AutoComment autoCommentInstance = new AutoComment();
@@ -262,7 +282,7 @@ public class Config {
                                getInt(cooldownMap, "second", 0);
 
         // 解析最早发布时间配置
-        Map<String, Object> minPubMap = getMap(commentMap, "min_pubdate");
+        Map<String, Object> minPubMap = getMap(commentMap, "min-pubdate");
         int year   = getInt(minPubMap, "year",   2000);
         int month  = getInt(minPubMap, "month",  1   );
         int day    = getInt(minPubMap, "day",    1   );
@@ -275,9 +295,17 @@ public class Config {
                 .toEpochSecond();
 
         // 解析自动清理延迟配置
-        Map<String, Object> autoClearMap = getMap(commentMap, "auto_clear_delay");
+        Map<String, Object> autoClearMap = getMap(commentMap, "auto-clear-delay");
         this.autoClearDelay = getInt(autoClearMap, "day",  10) * 86400 +
                               getInt(autoClearMap, "hour", 0 ) * 3600;
+
+        // 解析 URL 配置
+        Map<String, Object> urlMap = getMap(config, "urls");
+        this.urlPlaceholder = MapUtils.getString(urlMap, "placeholder", "{}");
+        this.urlHomepage    = MapUtils.getString(urlMap, "homepage",    "https://www.bilibili.com/");
+        this.urlVideoApi    = MapUtils.getString(urlMap, "video-api",   "https://api.bilibili.com/x/web-interface/view?bvid={}");
+        this.urlVideo       = MapUtils.getString(urlMap, "video",       "https://www.bilibili.com/video/{}/");
+        this.urlSearch      = MapUtils.getString(urlMap, "search",      "https://search.bilibili.com/all?keyword={}&from_source=webtop_search&search_source=5&order=pubdate");
 
         // 设置评论格式
         this.autoCommentInstance.setCommentFormat(new RandomComment(commentMap));
@@ -387,15 +415,6 @@ public class Config {
     }
 
     /**
-     * 获取自动评论实例
-     *
-     * @return 自动评论实例
-     */
-    public AutoComment autoCommentInstance() {
-        return autoCommentInstance;
-    }
-
-    /**
      * 获取评论间隔
      *
      * @return 评论间隔（秒）
@@ -429,6 +448,102 @@ public class Config {
      */
     public int getAutoClearDelay() {
         return autoClearDelay;
+    }
+
+    /**
+     * 获取 URL 替换占位符
+     *
+     * @return URL 替换占位符
+     */
+    public String getUrlPlaceholder() {
+        return urlPlaceholder;
+    }
+
+    /**
+     * 获取主页 URL
+     *
+     * @return 主页 URL
+     */
+    public String getUrlHomepage() {
+        return urlHomepage;
+    }
+
+    /**
+     * 获取视频 API URL
+     *
+     * @return 视频 API URL
+     */
+    public String getUrlVideoApi() {
+        return urlVideoApi;
+    }
+
+    /**
+     * 获取视频页面 URL
+     *
+     * @return 视频页面 URL
+     */
+    public String getUrlVideo() {
+        return urlVideo;
+    }
+
+    /**
+     * 获取搜索页面 URL
+     *
+     * @return 搜索页面 URL
+     */
+    public String getUrlSearch() {
+        return urlSearch;
+    }
+
+    /**
+     * 获取视频 API URL，并将占位符替换为指定字符串
+     *
+     * @param replaceWith 替换字符串
+     *
+     * @return 视频 API URL
+     */
+    public String getUrlVideoApi(String replaceWith) {
+        return urlVideoApi.replaceAll(
+                Pattern.quote(getUrlPlaceholder()),
+                replaceWith
+        );
+    }
+
+    /**
+     * 获取视频页面 URL，并将占位符替换为指定字符串
+     *
+     * @param replaceWith 替换字符串
+     *
+     * @return 视频页面 URL
+     */
+    public String getUrlVideo(String replaceWith) {
+        return urlVideo.replaceAll(
+                Pattern.quote(getUrlPlaceholder()),
+                replaceWith
+        );
+    }
+
+    /**
+     * 获取搜索页面 URL，并将占位符替换为指定字符串
+     *
+     * @param replaceWith 替换字符串
+     *
+     * @return 搜索页面 URL
+     */
+    public String getUrlSearch(String replaceWith) {
+        return urlSearch.replaceAll(
+                Pattern.quote(getUrlPlaceholder()),
+                replaceWith
+        );
+    }
+
+    /**
+     * 获取自动评论实例
+     *
+     * @return 自动评论实例
+     */
+    public AutoComment autoCommentInstance() {
+        return autoCommentInstance;
     }
 
 }
