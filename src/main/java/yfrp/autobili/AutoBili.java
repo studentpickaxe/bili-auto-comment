@@ -2,6 +2,7 @@ package yfrp.autobili;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import yfrp.autobili.browser.ChromeUtil;
 import yfrp.autobili.browser.Login;
 import yfrp.autobili.comment.CommentWorker;
 import yfrp.autobili.config.Config;
@@ -74,10 +75,10 @@ public class AutoBili {
                             : null;
 
         // 注册 JVM 关闭钩子，确保程序优雅退出
-        Runtime.getRuntime().addShutdownHook(new Thread(
-                () -> LOGGER.info("\n\n"),
-                "Shutdown-Hook"
-        ));
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            LOGGER.info("检测到 JVM 退出，正在清理资源...");
+            this.shutdown();
+        }, "Shutdown-Hook"));
     }
 
     /**
@@ -130,10 +131,7 @@ public class AutoBili {
 
         } catch (Exception e) {
             // 捕获并记录运行时异常
-            LOGGER.error("运行过程中发生错误", e);
-        } finally {
-            // 无论成功还是失败，都要执行关闭操作
-            shutdown();
+            LOGGER.error("运行时发生异常", e);
         }
 
     }
@@ -150,7 +148,7 @@ public class AutoBili {
             // 从文件加载待评论和已评论的视频列表
             BVIDS_TO_COMMENT.loadVideos();
             BVIDS_COMMENTED.loadVideos();
-            LOGGER.info("已加载视频 | 待评论: {}, 已处理: {}",
+            LOGGER.info("已加载视频列表 | 待评论: {}, 已处理: {}",
                     BVIDS_TO_COMMENT.size(), BVIDS_COMMENTED.size());
         } catch (IOException e) {
             // 加载失败时记录错误并抛出运行时异常
@@ -237,6 +235,6 @@ public class AutoBili {
             Thread.currentThread().interrupt();
         }
 
-        LOGGER.info("服务已关闭");
+        LOGGER.info("服务已关闭\n\n");
     }
 }
