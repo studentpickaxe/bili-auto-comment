@@ -428,6 +428,7 @@ public class CommentWorker implements Runnable {
      */
     public void shutdown() {
         accepting = false;
+        close();
         if (workerThread != null) {
             workerThread.interrupt();
         }
