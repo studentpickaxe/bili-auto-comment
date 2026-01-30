@@ -55,7 +55,7 @@ public class Login {
 
                 // 提取二维码图片 Base64
                 WebElement qrCodeImg = wait1.until(ExpectedConditions.visibilityOfElementLocated(qrCodeLocator));
-                Thread.sleep(1000);
+                Thread.sleep(500);
                 var qrBase64 = qrCodeImg.getAttribute("src");
                 if (qrBase64 == null || !qrBase64.startsWith("data:image")) {
                     LOGGER.warn("未获取到有效的登录二维码，正在重试");
