@@ -113,9 +113,9 @@ public class RandomComment {
      * <p>
      * 防止循环引用，确保变量解析的正确性
      *
-     * @param varName 变量名
-     * @param vars 变量映射表
-     * @param random 随机数生成器
+     * @param varName     变量名
+     * @param vars        变量映射表
+     * @param random      随机数生成器
      * @param visitedVars 已访问的变量集合，用于防止循环引用
      * @return 解析后的变量值
      */

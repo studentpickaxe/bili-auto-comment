@@ -26,7 +26,7 @@ public class BiliApi {
      *
      * @param url 视频信息 API URL
      * @return API 返回的 JSON 响应字符串
-     * @throws IOException IO 异常
+     * @throws IOException          IO 异常
      * @throws InterruptedException 线程中断异常
      */
     public static String getVidInfo(String url)
@@ -53,7 +53,7 @@ public class BiliApi {
      *
      * @param url 视频 API URL
      * @return 视频发布时间戳（秒），如果获取失败返回 -1
-     * @throws IOException IO 异常
+     * @throws IOException          IO 异常
      * @throws InterruptedException 线程中断异常
      */
     public static long getVidPubDate(String url)

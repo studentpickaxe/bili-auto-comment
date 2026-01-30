@@ -108,9 +108,9 @@ public class AutoComment {
      * 在指定视频下发送评论
      *
      * @param driver WebDriver 实例
-     * @param bvid 视频 BV 号
+     * @param bvid   视频 BV 号
      * @return 评论是否发送成功
-     * @throws InterruptedException 线程中断异常
+     * @throws InterruptedException     线程中断异常
      * @throws CommentCooldownException 评论冷却异常
      */
     public boolean comment(WebDriver driver,
@@ -125,7 +125,7 @@ public class AutoComment {
         LOGGER.info("开始在视频 {} 评论: {}", bvid, comment);
 
         // 检查评论格式是否已设置
-        if (commentFormat == null){
+        if (commentFormat == null) {
             throw new IllegalStateException("Comment format not set");
         }
 
@@ -150,11 +150,11 @@ public class AutoComment {
     /**
      * 发送评论的核心方法
      *
-     * @param driver WebDriver 实例
-     * @param wait 等待对象
+     * @param driver      WebDriver 实例
+     * @param wait        等待对象
      * @param commentText 评论内容
      * @return 评论是否发送成功
-     * @throws InterruptedException 线程中断异常
+     * @throws InterruptedException     线程中断异常
      * @throws CommentCooldownException 评论冷却异常
      */
     private boolean sendComment(WebDriver driver,
@@ -183,7 +183,7 @@ public class AutoComment {
      * 通过检查 Toast 消息来判断评论是否发送成功
      *
      * @param driver WebDriver 实例
-     * @throws InterruptedException 线程中断异常
+     * @throws InterruptedException     线程中断异常
      * @throws CommentCooldownException 评论冷却异常
      */
     @SuppressWarnings("unchecked")
@@ -239,8 +239,8 @@ public class AutoComment {
      * <p>
      * 通过 JavaScript 操作 Shadow DOM 中的评论框
      *
-     * @param driver WebDriver 实例
-     * @param wait 等待对象
+     * @param driver      WebDriver 实例
+     * @param wait        等待对象
      * @param commentText 评论内容
      * @return 评论是否发送成功
      */
