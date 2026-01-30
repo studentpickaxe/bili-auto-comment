@@ -82,11 +82,8 @@ public class SearchWorker implements Runnable {
                 searchOnce(keyword);
 
                 // 等待下一次搜索
-                var interval = config.getSearchInterval();
-                var t = new Random().nextInt(750, 1251);
-                for (int i = 0; i < interval; i++) {
-                    Thread.sleep(t);
-                }
+                Thread.sleep(config.getCommentInterval() *
+                             new Random().nextLong(750, 1251));
 
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();

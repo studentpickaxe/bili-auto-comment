@@ -294,11 +294,8 @@ public class CommentWorker implements Runnable {
                 }
 
                 // 等待下一次评论
-                var interval = config.getCommentInterval();
-                var t = new Random().nextInt(750, 1251);
-                for (int i = 0; i < interval; i++) {
-                    Thread.sleep(t);
-                }
+                Thread.sleep(config.getCommentInterval() *
+                             new Random().nextLong(750, 1251));
 
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();

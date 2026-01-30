@@ -2,8 +2,6 @@ package yfrp.autobili;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import yfrp.autobili.browser.ChromeUtil;
-import yfrp.autobili.browser.Login;
 import yfrp.autobili.comment.CommentWorker;
 import yfrp.autobili.config.Config;
 import yfrp.autobili.vid.SearchWorker;
@@ -11,8 +9,7 @@ import yfrp.autobili.vid.VidPool;
 
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Bilibili 自动评论系统主类
@@ -27,10 +24,10 @@ public class AutoBili {
     // 已评论视频池，记录已经评论过的视频ID，避免重复评论
     private static final VidPool BVIDS_COMMENTED = new VidPool("bvids_commented.txt");
 
-    // 定时任务调度器，用于执行周期性任务
-    private final ScheduledExecutorService scheduler;
     // 用于优雅关闭的同步工具
     private final CountDownLatch shutdownLatch;
+    // 标志服务是否正在关闭
+    private final AtomicBoolean isShuttingDown = new AtomicBoolean(false);
 
     // 评论工作线程相关
     private final CommentWorker commentWorker;
@@ -52,8 +49,6 @@ public class AutoBili {
     public AutoBili(Config config) {
         this.config = config;
 
-        // 创建定时任务调度器，使用自定义线程工厂
-        this.scheduler = Executors.newScheduledThreadPool(2, this::createThread);
         // 初始化关闭同步器
         this.shutdownLatch = new CountDownLatch(1);
 
@@ -75,10 +70,7 @@ public class AutoBili {
                             : null;
 
         // 注册 JVM 关闭钩子，确保程序优雅退出
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            LOGGER.info("检测到 JVM 退出，正在清理资源...");
-            this.shutdown();
-        }, "Shutdown-Hook"));
+        Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown, "Shutdown-Hook"));
     }
 
     /**
@@ -132,6 +124,9 @@ public class AutoBili {
         } catch (Exception e) {
             // 捕获并记录运行时异常
             LOGGER.error("运行时发生异常", e);
+        } finally {
+            // 确保系统正确关闭
+            shutdown();
         }
 
     }
@@ -208,10 +203,13 @@ public class AutoBili {
      * 停止所有服务和线程，确保资源正确释放
      */
     private void shutdown() {
-        LOGGER.info("准备关闭服务...");
 
-        // 停止定时任务调度器
-        scheduler.shutdownNow();
+        if (!isShuttingDown.compareAndSet(false, true)) {
+            // 已经在关闭过程中，直接返回
+            return;
+        }
+
+        LOGGER.info("准备关闭服务...");
 
         // 关闭搜索工作器
         if (searchWorker != null) {
@@ -222,7 +220,7 @@ public class AutoBili {
             commentWorker.shutdown();
         }
 
-        // 等待工作线程结束，最多等待2秒
+        // 等待工作线程结束，最多等待 2s
         try {
             if (searchThread != null) {
                 searchThread.join(2000);
