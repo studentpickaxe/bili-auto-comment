@@ -74,20 +74,6 @@ public class AutoBili {
     }
 
     /**
-     * 创建线程的工厂方法
-     * <p>
-     * 设置线程为非守护线程
-     *
-     * @param r 线程要执行的任务
-     * @return 配置好的线程
-     */
-    private Thread createThread(Runnable r) {
-        Thread t = new Thread(r);
-        t.setDaemon(false);
-        return t;
-    }
-
-    /**
      * 程序入口点
      * <p>
      * 根据配置决定是登录还是直接启动主程序
