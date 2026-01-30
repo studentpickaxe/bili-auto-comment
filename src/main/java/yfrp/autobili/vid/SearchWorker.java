@@ -46,7 +46,7 @@ public class SearchWorker implements Runnable {
     /**
      * 构造函数
      *
-     * @param config 系统配置
+     * @param config    系统配置
      * @param toComment 待评论视频池
      * @param commented 已评论视频池
      */
@@ -113,20 +113,20 @@ public class SearchWorker implements Runnable {
      */
     private synchronized void recoverDriver() {
         close();
-        try {
-            launchDriver();
-            LOGGER.info("搜索浏览器已恢复");
-        } catch (Exception e) {
-            LOGGER.error("搜索浏览器恢复失败", e);
-        }
+        launchDriver();
+        LOGGER.info("搜索浏览器已恢复");
     }
 
     /**
      * 启动搜索浏览器
      */
     private void launchDriver() {
-        driver = ChromeUtil.getHeadlessDriver();
-        driver.get(config.getUrlHomepage());
+        try {
+            driver = ChromeUtil.getHeadlessDriver();
+            driver.get(config.getUrlHomepage());
+        } catch (Exception e) {
+            LOGGER.error("搜索浏览器启动失败", e);
+        }
     }
 
     /**
