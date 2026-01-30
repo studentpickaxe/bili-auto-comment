@@ -24,8 +24,6 @@ public class AutoBili {
     // 已评论视频池，记录已经评论过的视频ID，避免重复评论
     private static final VidPool BVIDS_COMMENTED = new VidPool("bvids_commented.txt");
 
-    // 用于优雅关闭的同步工具
-    private final CountDownLatch shutdownLatch;
     // 标志服务是否正在关闭
     private final AtomicBoolean isShuttingDown = new AtomicBoolean(false);
 
@@ -48,9 +46,6 @@ public class AutoBili {
      */
     public AutoBili(Config config) {
         this.config = config;
-
-        // 初始化关闭同步器
-        this.shutdownLatch = new CountDownLatch(1);
 
         // 初始化评论工作器
         this.commentWorker = new CommentWorker(
@@ -99,21 +94,8 @@ public class AutoBili {
         );
         LOGGER.info("配置的部分参数可修改后自动重载");
 
-        try {
-            // 执行初始化
-            initialize();
-            // 监听停止命令
-            listenForStopCommand();
-            // 等待关闭信号
-            awaitShutdown();
-
-        } catch (Exception e) {
-            // 捕获并记录运行时异常
-            LOGGER.error("运行时发生异常", e);
-        } finally {
-            // 确保系统正确关闭
-            shutdown();
-        }
+        // 执行初始化
+        initialize();
 
     }
 
@@ -144,43 +126,6 @@ public class AutoBili {
             searchThread.start();
         }
 
-    }
-
-    /**
-     * 监听控制台输入，等待用户输入停止命令
-     */
-    private void listenForStopCommand() {
-        Thread inputThread = new Thread(() -> {
-            LOGGER.info("输入 'stop' 停止程序");
-            while (true) {
-                // 读取用户输入
-                String line = IO.readln();
-                if ("stop".equalsIgnoreCase(line)) {
-                    // 收到停止命令，记录日志并触发关闭
-                    LOGGER.info("正在终止运行...");
-                    shutdownLatch.countDown();
-                    break;
-                }
-            }
-        }, "Console-Listener");
-        // 设置为守护线程，不阻止JVM退出
-        inputThread.setDaemon(true);
-        inputThread.start();
-    }
-
-    /**
-     * 等待关闭信号
-     * <p>
-     * 阻塞当前线程直到收到关闭信号
-     */
-    private void awaitShutdown() {
-        try {
-            shutdownLatch.await();
-        } catch (InterruptedException e) {
-            // 如果等待被中断，恢复中断状态并记录警告
-            Thread.currentThread().interrupt();
-            LOGGER.warn("等待关闭信号时被中断", e);
-        }
     }
 
     /**
