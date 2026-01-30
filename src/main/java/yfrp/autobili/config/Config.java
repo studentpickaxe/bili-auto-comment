@@ -124,9 +124,6 @@ public class Config {
     private final long SEED = System.currentTimeMillis();
 
 
-    // 登录配置
-    private final boolean first;
-
     // 搜索间隔最小值（秒）
     public static final int MIN_SEARCH_INTERVAL = 10;
     // 评论间隔最小值（秒）
@@ -168,17 +165,6 @@ public class Config {
 
 
     /**
-     * 构造函数
-     * <p>
-     * 检查配置文件是否存在，如果不存在则创建默认配置文件
-     *
-     * @param path 配置文件路径
-     */
-    public Config(Path path) {
-        this.first = Files.notExists(path);
-    }
-
-    /**
      * 获取配置实例
      * <p>
      * 单例模式，确保全局只有一个配置实例
@@ -187,7 +173,7 @@ public class Config {
      */
     public static Config getInstance() {
         Path path = Path.of(configFile);
-        var config = new Config(path);
+        var config = new Config();
         config.loadConfig(path);
         return config;
     }
@@ -372,15 +358,6 @@ public class Config {
         return List.of(defaultVal);
     }
 
-
-    /**
-     * 获取登录启用状态
-     *
-     * @return 是否启用登录
-     */
-    public boolean isFirst() {
-        return first;
-    }
 
     /**
      * 获取搜索启用状态

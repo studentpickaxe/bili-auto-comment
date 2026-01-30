@@ -102,11 +102,6 @@ public class AutoBili {
     static void main() {
         var config = Config.getInstance();
 
-        // 如果是第一次运行，执行登录流程
-        if (config.isFirst()) {
-            Login.loginHeadless(config.getUrlHomepage());
-        }
-
         new AutoBili(config).start();
     }
 
