@@ -2,11 +2,9 @@ package yfrp.autobili.comment;
 
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebDriverException;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import yfrp.autobili.browser.ChromeOptionUtil;
+import yfrp.autobili.browser.ChromeUtil;
 import yfrp.autobili.browser.Login;
 import yfrp.autobili.config.Config;
 import yfrp.autobili.vid.BiliApi;
@@ -70,7 +68,7 @@ public class CommentWorker implements Runnable {
     /**
      * 构造函数
      *
-     * @param config 系统配置
+     * @param config    系统配置
      * @param commenter 自动评论实例
      * @param toComment 待评论视频池
      * @param commented 已评论视频池
@@ -85,15 +83,8 @@ public class CommentWorker implements Runnable {
         this.toComment = toComment;
         this.commented = commented;
 
-        // 配置 Chrome 浏览器选项
-        ChromeOptions options = new ChromeOptions();
-        ChromeOptionUtil.makeLightweight(options);
-        ChromeOptionUtil.setProfile(options, "comment");
-
-        // 启动浏览器
-        driver = new ChromeDriver(options);
+        launchDriver();
         LOGGER.info("评论浏览器已启动");
-        driver.get(config.getUrlHomepage());
     }
 
     /**
@@ -103,7 +94,7 @@ public class CommentWorker implements Runnable {
      *
      * @param bvid 视频 BV 号
      * @return 是否跳过该视频
-     * @throws IOException IO 异常
+     * @throws IOException          IO 异常
      * @throws InterruptedException 线程中断异常
      */
     private boolean checkPubDate(@Nonnull String bvid)
@@ -172,7 +163,7 @@ public class CommentWorker implements Runnable {
     /**
      * 从待评论视频池中移除视频
      *
-     * @param bvid 视频 BV 号
+     * @param bvid           视频 BV 号
      * @param addToCommented 是否添加到已评论视频池
      */
     private void removeFromToComment(String bvid,
@@ -314,8 +305,10 @@ public class CommentWorker implements Runnable {
                 break;
 
             } catch (WebDriverException e) {
-                LOGGER.warn("评论浏览器被关闭，尝试恢复: {}", e.getMessage());
-                recoverDriver();
+                if (accepting) {
+                    LOGGER.warn("评论浏览器被关闭，尝试恢复: {}", e.getMessage());
+                    recoverDriver();
+                }
 
             } catch (Exception e) {
                 if (accepting) {
@@ -389,7 +382,7 @@ public class CommentWorker implements Runnable {
 
             } catch (NotLoggedInException e) {
                 LOGGER.error("未登录，请完成登录: {}", e.getMessage());
-                Login.loginHeadless(driver);
+                Login.loginHeadless(driver, config.getUrlHomepage());
 
             } catch (Exception e) {
                 if (accepting) {
@@ -409,18 +402,20 @@ public class CommentWorker implements Runnable {
      */
     private synchronized void recoverDriver() {
         close();
-        try {
-            // 配置 Chrome 浏览器选项
-            ChromeOptions options = new ChromeOptions();
-            ChromeOptionUtil.makeLightweight(options);
-            ChromeOptionUtil.setProfile(options, "comment");
+        launchDriver();
+        LOGGER.info("评论浏览器已恢复");
+    }
 
-            // 重新启动浏览器
-            driver = new ChromeDriver(options);
+    /**
+     * 启动评论浏览器
+     */
+    private void launchDriver() {
+        try {
+            driver = ChromeUtil.getHeadlessDriver();
             driver.get(config.getUrlHomepage());
-            LOGGER.info("评论浏览器已恢复");
+            ChromeUtil.loadCookies(driver, config.getUrlHomepage());
         } catch (Exception e) {
-            LOGGER.error("评论浏览器恢复失败", e);
+            LOGGER.error("评论浏览器启动失败", e);
         }
     }
 

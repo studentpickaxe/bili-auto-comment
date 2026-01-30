@@ -93,8 +93,10 @@ public class SearchWorker implements Runnable {
                 break;
 
             } catch (WebDriverException e) {
-                LOGGER.warn("搜索浏览器被关闭，尝试恢复: {}", e.getMessage());
-                recoverDriver();
+                if (accepting) {
+                    LOGGER.warn("搜索浏览器被关闭，尝试恢复: {}", e.getMessage());
+                    recoverDriver();
+                }
 
             } catch (Exception e) {
                 if (accepting) {

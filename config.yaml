@@ -1,9 +1,3 @@
-login:
-  # 无法重载
-  # could NOT be reloaded
-  enable: NO
-
-
 search:
   # 无法重载
   # could NOT be reloaded

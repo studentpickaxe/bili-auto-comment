@@ -3,8 +3,6 @@ package yfrp.autobili.config;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.math.NumberUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
 import yfrp.autobili.comment.AutoComment;
 import yfrp.autobili.comment.RandomComment;
@@ -27,20 +25,12 @@ import java.util.regex.Pattern;
  */
 public class Config {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(Config.class);
-
     // 配置文件名
     private static final String configFile = "config.yaml";
 
     // 默认配置内容
     private static final String defaultConfig =
             """
-            login:
-              # 无法重载
-              # could NOT be reloaded
-              enable: NO
-            
-            
             search:
               # 无法重载
               # could NOT be reloaded
@@ -135,7 +125,7 @@ public class Config {
 
 
     // 登录配置
-    private boolean loginEnabled;
+    private final boolean first;
 
     // 搜索间隔最小值（秒）
     public static final int MIN_SEARCH_INTERVAL = 10;
@@ -185,11 +175,7 @@ public class Config {
      * @param path 配置文件路径
      */
     public Config(Path path) {
-        var first = Files.notExists(path);
-        this.loginEnabled = first;
-        if (first) {
-            LOGGER.info("检测到第一次启动，请按提示完成浏览器初始化");
-        }
+        this.first = Files.notExists(path);
     }
 
     /**
@@ -254,12 +240,6 @@ public class Config {
      * @param config 配置对象
      */
     private void parseConfig(Map<String, Object> config) {
-
-        // 解析登录配置
-        Map<String, Object> loginMap = getMap(config, "login");
-        if (getBoolean(loginMap, "enable", false)) {
-            this.loginEnabled = true;
-        }
 
         // 解析搜索配置
         Map<String, Object> searchMap = getMap(config, "search");
@@ -344,8 +324,8 @@ public class Config {
     /**
      * 从配置映射中获取整数值
      *
-     * @param map 配置映射
-     * @param key 键名
+     * @param map        配置映射
+     * @param key        键名
      * @param defaultVal 默认值
      * @return 整数值
      */
@@ -360,8 +340,8 @@ public class Config {
     /**
      * 从配置映射中获取布尔值
      *
-     * @param map 配置映射
-     * @param key 键名
+     * @param map        配置映射
+     * @param key        键名
      * @param defaultVal 默认值
      * @return 布尔值
      */
@@ -376,8 +356,8 @@ public class Config {
     /**
      * 从配置映射中获取字符串数组
      *
-     * @param map 配置映射
-     * @param key 键名
+     * @param map        配置映射
+     * @param key        键名
      * @param defaultVal 默认值
      * @return 字符串列表
      */
@@ -398,8 +378,8 @@ public class Config {
      *
      * @return 是否启用登录
      */
-    public boolean isLoginEnabled() {
-        return loginEnabled;
+    public boolean isFirst() {
+        return first;
     }
 
     /**

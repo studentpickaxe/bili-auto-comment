@@ -102,13 +102,12 @@ public class AutoBili {
     static void main() {
         var config = Config.getInstance();
 
-        if (config.isLoginEnabled()) {
-            // 如果启用了登录功能，先执行登录
-            Login.login();
-        } else {
-            // 否则直接启动主程序
-            new AutoBili(Config.getInstance()).start();
+        // 如果是第一次运行，执行登录流程
+        if (config.isFirst()) {
+            Login.loginHeadless(config.getUrlHomepage());
         }
+
+        new AutoBili(config).start();
     }
 
     /**

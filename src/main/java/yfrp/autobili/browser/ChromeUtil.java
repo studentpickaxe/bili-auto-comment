@@ -8,7 +8,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Set;
+import java.util.function.Consumer;
 
 public class ChromeUtil {
 
@@ -16,7 +19,7 @@ public class ChromeUtil {
 
     private static final String COOKIE_FILE = "cookies.txt";
 
-    
+
     public static ChromeDriver getHeadlessDriver() {
         return new ChromeDriver(getHeadlessOptions());
     }
@@ -28,17 +31,47 @@ public class ChromeUtil {
         options.addArguments(
                 "--headless=new",
                 "--no-sandbox",
+
+                "--mute-audio",
+                "--blink-settings=imagesEnabled=false",
+
                 "--disable-gpu",
-                "--disable-dev-shm-usage"
+                "--disable-dev-shm-usage",
+
+                "--disable-extensions",
+                "--disable-plugins",
+                "--disable-default-apps",
+
+                "--disable-background-networking",
+                "--disable-background-timer-throttling",
+                "--disable-backgrounding-occluded-windows",
+                "--disable-renderer-backgrounding",
+
+                "--disable-sync",
+                "--disable-translate",
+                "--disable-notifications",
+                "--disable-infobars",
+
+                "--silent"
         );
 
         return options;
     }
 
+    public static void withHeadlessDriver(Consumer<WebDriver> action) {
+
+        var driver = getHeadlessDriver();
+        try {
+            action.accept(driver);
+        } finally {
+            driver.quit();
+        }
+    }
+
     /**
      * 保存 Cookies 到文件
      *
-     * @param driver WebDriver 实例
+     * @param driver      WebDriver 实例
      * @param homepageUrl 主页 URL
      */
     public static void saveCookies(WebDriver driver,
@@ -75,7 +108,16 @@ public class ChromeUtil {
      *
      * @param driver WebDriver 实例
      */
-    public static void loadCookies(WebDriver driver) {
+    public static void loadCookies(WebDriver driver,
+                                   String homepageUrl) {
+
+        if (Files.notExists(Path.of(COOKIE_FILE))) {
+            LOGGER.warn("Cookies 文件不存在，请登录");
+
+            Login.loginHeadless(driver, homepageUrl);
+
+            return;
+        }
 
         try (FileReader fileReader = new FileReader(COOKIE_FILE);
              BufferedReader bufferedReader = new BufferedReader(fileReader)) {
