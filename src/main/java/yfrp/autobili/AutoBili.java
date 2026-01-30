@@ -141,8 +141,8 @@ public class AutoBili {
 
         try {
             // 从文件加载待评论和已评论的视频列表
-            BVIDS_TO_COMMENT.loadVideos();
-            BVIDS_COMMENTED.loadVideos();
+            BVIDS_TO_COMMENT.loadVideos(null);
+            BVIDS_COMMENTED.loadVideos(CommentWorker::upgradeCommentedLine);
             LOGGER.info("已加载视频列表 | 待评论: {}, 已处理: {}",
                     BVIDS_TO_COMMENT.size(), BVIDS_COMMENTED.size());
         } catch (IOException e) {

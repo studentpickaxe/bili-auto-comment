@@ -1,5 +1,6 @@
 package yfrp.autobili.comment;
 
+import org.apache.commons.lang3.math.NumberUtils;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebDriverException;
 import org.slf4j.Logger;
@@ -22,6 +23,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -85,6 +87,25 @@ public class CommentWorker implements Runnable {
 
         launchDriver();
         LOGGER.info("评论浏览器已启动");
+    }
+
+    public static String upgradeCommentedLine(String original) {
+
+        Matcher m2 = commentedLineV2.matcher(original);
+        if (m2.matches()) {
+            String bv = m2.group(1);
+            String pub = m2.group(2);
+            return bv + "|" + pub;
+        }
+
+        Matcher m1 = commentedLineV1.matcher(original);
+        if (m1.matches()) {
+            String bv = m1.group(1);
+            String pub = m1.group(2);
+            return bv + "|" + pub;
+        }
+
+        return "";
     }
 
     /**
@@ -175,7 +196,7 @@ public class CommentWorker implements Runnable {
 
         // 添加到已评论视频池
         if (addToCommented) {
-            commented.add("v2;" + bvid + ";" + now());
+            commented.put(bvid, String.valueOf(now()));
             commented.saveVideos();
 
             LOGGER.info(
@@ -211,33 +232,12 @@ public class CommentWorker implements Runnable {
      */
     private void clearCommented() {
 
-        List<String> toAdd = new ArrayList<>();
-
-        commented.removeIf(line -> {
-            var matcher = commentedLineV2.matcher(line);
-
-            // 匹配新版本格式
-            if (!matcher.find()) {
-                // v1 格式
-                var matcherV1 = commentedLineV1.matcher(line);
-
-                if (matcherV1.find()) {
-                    var bvid = matcherV1.group(1);
-                    var processTime = now();
-
-                    toAdd.add("v2;" + bvid + ";" + processTime);
-                }
-
-                return true;
-            }
-
-            // 匹配新版本格式
-            var bvid = matcher.group(1);
-            var processTime = Long.parseLong(matcher.group(2));
-            var autoClearDelay = config.getAutoClearDelay();
+        commented.removeIf(entry -> {
+            long processTime = NumberUtils.toLong(entry.getValue(), -1L);
+            long autoClearDelay = config.getAutoClearDelay();
             if (processTime < now() - autoClearDelay) {
                 LOGGER.info("已删除已处理的视频 {}，视频处理距今已超过设定的最大时间间隔 {}d {}h",
-                        bvid,
+                        entry.getKey(),
                         autoClearDelay / 86400,
                         (autoClearDelay % 86400) / 3600
                 );
@@ -246,9 +246,6 @@ public class CommentWorker implements Runnable {
 
             return false;
         });
-
-        // 添加需要转换的旧版本记录
-        commented.addAll(toAdd);
     }
 
     /**
