@@ -270,55 +270,57 @@ public class CommentWorker implements Runnable {
         this.workerThread = Thread.currentThread();
 
         while (accepting) {
-            if (!accepting) {
-                break;
-            }
-
-            // 每小时清理一次已处理的视频记录
-            if (now() - lastClearTime > 3600) {
-                clearCommented();
-                lastClearTime = now();
-            }
-
-            // 重新加载配置
-            config.loadConfig();
-
-            // 评论处理
-            if (cooldownEndTime < now()) {
-
-                // 将最多3个视频添加到队列
-                for (int i = 0; i < 3; i++) {
-                    if (toComment.isEmpty()) {
-                        break;
-                    }
-
-                    var bvid = toComment.getVidFromPool();
-                    if (bvid == null) {
-                        continue;
-                    }
-
-                    if (!queue.offer(bvid)) {
-                        break;
-                    }
-                }
-
-                comment();
-            }
-
-            // 等待下一次评论
             try {
-                if (accepting) {
-
-                    var interval = config.getCommentInterval();
-                    var t = new Random().nextInt(750, 1251);
-
-                    for (int i = 0; i < interval; i++) {
-                        Thread.sleep(t);
-                    }
+                // 每小时清理一次已处理的视频记录
+                if (now() - lastClearTime > 3600) {
+                    clearCommented();
+                    lastClearTime = now();
                 }
+
+                // 重新加载配置
+                config.loadConfig();
+
+                // 评论处理
+                if (cooldownEndTime < now()) {
+
+                    // 将最多3个视频添加到队列
+                    for (int i = 0; i < 3; i++) {
+                        if (toComment.isEmpty()) {
+                            break;
+                        }
+
+                        var bvid = toComment.getVidFromPool();
+                        if (bvid == null) {
+                            continue;
+                        }
+
+                        if (!queue.offer(bvid)) {
+                            break;
+                        }
+                    }
+
+                    comment();
+                }
+
+                // 等待下一次评论
+                var interval = config.getCommentInterval();
+                var t = new Random().nextInt(750, 1251);
+                for (int i = 0; i < interval; i++) {
+                    Thread.sleep(t);
+                }
+
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 break;
+
+            } catch (WebDriverException e) {
+                LOGGER.warn("评论浏览器被关闭，尝试恢复: {}", e.getMessage());
+                recoverDriver();
+
+            } catch (Exception e) {
+                if (accepting) {
+                    LOGGER.error("评论线程异常", e);
+                }
             }
         }
 
@@ -373,10 +375,6 @@ public class CommentWorker implements Runnable {
                     LOGGER.info("已处理 {} 个视频", commentCount.addAndGet(1));
                     removeFromToComment(bvid, true);
                 }
-
-            } catch (WebDriverException e) {
-                LOGGER.warn("浏览器异常，尝试恢复: {}", e.getMessage());
-                recoverDriver();
 
             } catch (CommentCooldownException e) {
                 // 触发风控，进入冷却期

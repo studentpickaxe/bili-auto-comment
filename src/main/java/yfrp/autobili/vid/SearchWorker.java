@@ -13,6 +13,7 @@ import yfrp.autobili.config.Config;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -88,14 +89,22 @@ public class SearchWorker implements Runnable {
                 String keyword = nextKeyword();
                 // 执行一次搜索
                 searchOnce(keyword);
+
                 // 等待下一次搜索
-                Thread.sleep(config.getSearchInterval() * 1000L);
+                var interval = config.getSearchInterval();
+                var t = new Random().nextInt(750, 1251);
+                for (int i = 0; i < interval; i++) {
+                    Thread.sleep(t);
+                }
+
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 break;
+
             } catch (WebDriverException e) {
-                LOGGER.warn("搜索失败，尝试恢复浏览器: {}", e.getMessage());
+                LOGGER.warn("搜索浏览器被关闭，尝试恢复: {}", e.getMessage());
                 recoverDriver();
+
             } catch (Exception e) {
                 if (accepting) {
                     LOGGER.error("搜索线程异常", e);
