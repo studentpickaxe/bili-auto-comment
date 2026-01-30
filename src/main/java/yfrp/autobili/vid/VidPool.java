@@ -1,6 +1,7 @@
 package yfrp.autobili.vid;
 
-import javax.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
+
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;

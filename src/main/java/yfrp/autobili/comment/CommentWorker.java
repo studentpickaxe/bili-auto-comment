@@ -1,6 +1,7 @@
 package yfrp.autobili.comment;
 
 import org.apache.commons.lang3.math.NumberUtils;
+import org.jetbrains.annotations.NotNull;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebDriverException;
 import org.slf4j.Logger;
@@ -11,13 +12,10 @@ import yfrp.autobili.config.Config;
 import yfrp.autobili.vid.BiliApi;
 import yfrp.autobili.vid.VidPool;
 
-import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -118,7 +116,7 @@ public class CommentWorker implements Runnable {
      * @throws IOException          IO 异常
      * @throws InterruptedException 线程中断异常
      */
-    private boolean checkPubDate(@Nonnull String bvid)
+    private boolean checkPubDate(@NotNull String bvid)
             throws IOException,
                    InterruptedException {
 
