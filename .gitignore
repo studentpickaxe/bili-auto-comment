@@ -40,11 +40,9 @@ build/
 
 bvids_to_comment.txt
 bvids_commented.txt
-
+cookies.txt
 chrome-profiles/
-
 logs/
 
 src/test/
-
 .idea/
