@@ -7,6 +7,7 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import yfrp.autobili.browser.ChromeOptionUtil;
+import yfrp.autobili.browser.Login;
 import yfrp.autobili.config.Config;
 import yfrp.autobili.vid.BiliApi;
 import yfrp.autobili.vid.VidPool;
@@ -34,9 +35,9 @@ public class CommentWorker implements Runnable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CommentWorker.class);
 
-    // 已处理视频记录的正则表达式模式（旧版本）
+    // 已处理视频记录的正则表达式模式 (v1)
     private static final Pattern commentedLineV1 = Pattern.compile("^(BV[A-Za-z0-9]+);pubdate(\\d+)$");
-    // 已处理视频记录的正则表达式模式（新版本）
+    // 已处理视频记录的正则表达式模式 (v2)
     private static final Pattern commentedLineV2 = Pattern.compile("^v2;(BV[A-Za-z0-9]+);(\\d+)$");
 
     // 已处理视频计数器
@@ -268,62 +269,61 @@ public class CommentWorker implements Runnable {
     public void run() {
         this.workerThread = Thread.currentThread();
 
-        try {
-
-            while (accepting) {
-                if (!accepting) {
-                    break;
-                }
-
-                // 每小时清理一次已处理的视频记录
-                if (now() - lastClearTime > 3600) {
-                    clearCommented();
-                    lastClearTime = now();
-                }
-
-                // 评论处理
-                if (cooldownEndTime < now()) {
-
-                    // 将最多3个视频添加到队列
-                    for (int i = 0; i < 3; i++) {
-                        if (toComment.isEmpty()) {
-                            break;
-                        }
-
-                        var bvid = toComment.getVidFromPool();
-                        if (bvid == null) {
-                            continue;
-                        }
-
-                        if (!queue.offer(bvid)) {
-                            break;
-                        }
-                    }
-
-                    comment();
-                }
-
-                // 等待下一次评论
-                try {
-                    if (accepting) {
-
-                        var interval = config.getCommentInterval();
-                        var t = new Random().nextInt(750, 1251);
-
-                        for (int i = 0; i < interval; i++) {
-                            Thread.sleep(t);
-                        }
-                    }
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
-                }
+        while (accepting) {
+            if (!accepting) {
+                break;
             }
 
-        } finally {
-            close();
-            LOGGER.info("评论线程已结束，已处理 {} 个视频", commentCount.get());
+            // 每小时清理一次已处理的视频记录
+            if (now() - lastClearTime > 3600) {
+                clearCommented();
+                lastClearTime = now();
+            }
+
+            // 重新加载配置
+            config.loadConfig();
+
+            // 评论处理
+            if (cooldownEndTime < now()) {
+
+                // 将最多3个视频添加到队列
+                for (int i = 0; i < 3; i++) {
+                    if (toComment.isEmpty()) {
+                        break;
+                    }
+
+                    var bvid = toComment.getVidFromPool();
+                    if (bvid == null) {
+                        continue;
+                    }
+
+                    if (!queue.offer(bvid)) {
+                        break;
+                    }
+                }
+
+                comment();
+            }
+
+            // 等待下一次评论
+            try {
+                if (accepting) {
+
+                    var interval = config.getCommentInterval();
+                    var t = new Random().nextInt(750, 1251);
+
+                    for (int i = 0; i < interval; i++) {
+                        Thread.sleep(t);
+                    }
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
         }
+
+        close();
+        LOGGER.info("评论线程已结束，已处理 {} 个视频", commentCount.get());
     }
 
     /**
@@ -368,8 +368,6 @@ public class CommentWorker implements Runnable {
             }
 
             try {
-                // 重新加载配置
-                config.loadConfig();
                 // 发送评论
                 if (commenter.comment(driver, bvid, config.getUrlVideo(bvid))) {
                     LOGGER.info("已处理 {} 个视频", commentCount.addAndGet(1));
@@ -383,12 +381,17 @@ public class CommentWorker implements Runnable {
             } catch (CommentCooldownException e) {
                 // 触发风控，进入冷却期
                 var cd = config.getCommentCooldown();
-                LOGGER.warn("触发风控，暂停自动评论 {}h {}min {}s",
+                LOGGER.warn("触发风控，暂停自动评论 {}h {}min {}s: {}",
                         cd / 3600,
                         (cd % 3600) / 60,
-                        cd % 60
+                        cd % 60,
+                        e.getMessage()
                 );
                 cooldownEndTime = now() + cd;
+
+            } catch (NotLoggedInException e) {
+                LOGGER.error("未登录，请完成登录: {}", e.getMessage());
+                Login.loginHeadless(driver);
 
             } catch (Exception e) {
                 if (accepting) {

@@ -115,12 +115,17 @@ public class Config {
                   - '🥇赢了'
             
             
-            urls:
+            url:
               placeholder: '{}'
               homepage:    'https://www.bilibili.com/'
               video-api:   'https://api.bilibili.com/x/web-interface/view?bvid={}'
               video:       'https://www.bilibili.com/video/{}/'
               search:      'https://search.bilibili.com/all?keyword={}&from_source=webtop_search&search_source=5&order=pubdate'
+            
+            
+            toast-keyword:
+              cd-ban:        'cd'
+              not-logged-in: '未登录'
             
             """;
 
@@ -163,8 +168,13 @@ public class Config {
     // 搜索页面 URL
     private String urlSearch;
 
+    // cd 风控 toast 关键词
+    private String toastKwCdBan;
+    // 未登录 toast 关键词
+    private String toastKwNotLoggedIn;
+
     // 自动评论实例
-    private final AutoComment autoCommentInstance = new AutoComment();
+    private final AutoComment autoCommentInstance = new AutoComment(this);
 
 
     /**
@@ -300,12 +310,17 @@ public class Config {
                               getInt(autoClearMap, "hour", 0 ) * 3600;
 
         // 解析 URL 配置
-        Map<String, Object> urlMap = getMap(config, "urls");
+        Map<String, Object> urlMap = getMap(config, "url");
         this.urlPlaceholder = MapUtils.getString(urlMap, "placeholder", "{}");
         this.urlHomepage    = MapUtils.getString(urlMap, "homepage",    "https://www.bilibili.com/");
         this.urlVideoApi    = MapUtils.getString(urlMap, "video-api",   "https://api.bilibili.com/x/web-interface/view?bvid={}");
         this.urlVideo       = MapUtils.getString(urlMap, "video",       "https://www.bilibili.com/video/{}/");
         this.urlSearch      = MapUtils.getString(urlMap, "search",      "https://search.bilibili.com/all?keyword={}&from_source=webtop_search&search_source=5&order=pubdate");
+
+        // 解析 toast 关键词
+        Map<String, Object> toastMap = getMap(config, "toast-keyword");
+        this.toastKwCdBan        = MapUtils.getString(toastMap, "ban",           "cd");
+        this.toastKwNotLoggedIn  = MapUtils.getString(toastMap, "not-logged-in", "未登录");
 
         // 设置评论格式
         this.autoCommentInstance.setCommentFormat(new RandomComment(commentMap));
@@ -499,7 +514,6 @@ public class Config {
      * 获取视频 API URL，并将占位符替换为指定字符串
      *
      * @param replaceWith 替换字符串
-     *
      * @return 视频 API URL
      */
     public String getUrlVideoApi(String replaceWith) {
@@ -513,7 +527,6 @@ public class Config {
      * 获取视频页面 URL，并将占位符替换为指定字符串
      *
      * @param replaceWith 替换字符串
-     *
      * @return 视频页面 URL
      */
     public String getUrlVideo(String replaceWith) {
@@ -527,7 +540,6 @@ public class Config {
      * 获取搜索页面 URL，并将占位符替换为指定字符串
      *
      * @param replaceWith 替换字符串
-     *
      * @return 搜索页面 URL
      */
     public String getUrlSearch(String replaceWith) {
@@ -535,6 +547,24 @@ public class Config {
                 Pattern.quote(getUrlPlaceholder()),
                 replaceWith
         );
+    }
+
+    /**
+     * 获取 cd 风控 toast 关键词
+     *
+     * @return cd 风控 toast 关键词
+     */
+    public String getToastKwCdBan() {
+        return toastKwCdBan;
+    }
+
+    /**
+     * 获取未登录 toast 关键词
+     *
+     * @return 未登录 toast 关键词
+     */
+    public String getToastKwNotLoggedIn() {
+        return toastKwNotLoggedIn;
     }
 
     /**

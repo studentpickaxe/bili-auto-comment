@@ -99,9 +99,14 @@ comment:
       - '🥇赢了'
 
 
-urls:
+url:
   placeholder: '{}'
   homepage:    'https://www.bilibili.com/'
   video-api:   'https://api.bilibili.com/x/web-interface/view?bvid={}'
   video:       'https://www.bilibili.com/video/{}/'
   search:      'https://search.bilibili.com/all?keyword={}&from_source=webtop_search&search_source=5&order=pubdate'
+
+
+toast-keyword:
+  cd-ban:        'cd'
+  not-logged-in: '未登录'

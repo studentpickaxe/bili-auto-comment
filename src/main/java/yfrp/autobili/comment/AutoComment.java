@@ -8,6 +8,7 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import yfrp.autobili.config.Config;
 
 import java.time.Duration;
 import java.util.List;
@@ -20,6 +21,9 @@ import java.util.List;
 public class AutoComment {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AutoComment.class);
+
+    private final Config config;
+
     // 等待元素超时时间（秒）
     private static final int TIMEOUT = 15;
 
@@ -86,6 +90,11 @@ public class AutoComment {
             return results;
             """;
 
+
+    public AutoComment(Config config) {
+        this.config = config;
+    }
+
     /**
      * 设置评论格式生成器
      *
@@ -108,7 +117,8 @@ public class AutoComment {
                            String bvid,
                            String url)
             throws InterruptedException,
-                   CommentCooldownException {
+                   CommentCooldownException,
+                   NotLoggedInException {
 
         // 生成评论内容
         var comment = commentFormat.generate();
@@ -151,7 +161,8 @@ public class AutoComment {
                                 WebDriverWait wait,
                                 String commentText)
             throws InterruptedException,
-                   CommentCooldownException {
+                   CommentCooldownException,
+                   NotLoggedInException {
 
         // 设置 Toast 监视器
         ((JavascriptExecutor) driver).executeScript(SCRIPT_CHECK_TOAST);
@@ -176,9 +187,10 @@ public class AutoComment {
      * @throws CommentCooldownException 评论冷却异常
      */
     @SuppressWarnings("unchecked")
-    private static void checkCommentToast(WebDriver driver)
+    private void checkCommentToast(WebDriver driver)
             throws InterruptedException,
-                   CommentCooldownException {
+                   CommentCooldownException,
+                   NotLoggedInException {
 
         // 最多检查10次，每次间隔500ms
         for (int i = 0; i < 10; i++) {
@@ -199,9 +211,14 @@ public class AutoComment {
                     return;
                 }
 
-                // 评论冷却
-                if (t.contains("cd") || t.contains("CD")) {
-                    throw new CommentCooldownException();
+                // cd ban
+                if (t.contains(config.getToastKwCdBan())) {
+                    throw new CommentCooldownException(t);
+                }
+
+                // 未登录
+                if (t.contains(config.getToastKwNotLoggedIn())) {
+                    throw new NotLoggedInException(t);
                 }
 
                 // 评论发送失败
@@ -292,8 +309,6 @@ public class AutoComment {
                     "arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});",
                     commentSection
             );
-
-            // LOGGER.debug("已滚动到评论区");
 
         } catch (Exception e) {
             LOGGER.error("滚动到评论区失败", e);
