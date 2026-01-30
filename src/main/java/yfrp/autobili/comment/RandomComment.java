@@ -58,69 +58,6 @@ public class RandomComment {
     }
 
     /**
-     * 从字符串构造随机评论生成器
-     * <p>
-     * 字符串格式：模板部分 + 分隔符 + 变量部分
-     *
-     * @param rcfStr 配置字符串
-     */
-    public RandomComment(String rcfStr) {
-        this.templates = new HashSet<>();
-        this.vars = new HashMap<>();
-
-        // 分割字符串，找到分隔符 {{{{{{
-        String[] parts = rcfStr.split("\\{\\{\\{\\{\\{\\{", 2);
-
-        // 处理模板部分（分隔符之前）
-        if (parts.length > 0) {
-            String templatesPart = parts[0];
-            String[] templateLines = templatesPart.split("\\r?\\n");
-
-            for (String line : templateLines) {
-                line = line.trim();
-                if (!line.isEmpty()) {
-                    templates.add(line);
-                }
-            }
-        }
-
-        // 处理变量部分（分隔符之后）
-        if (parts.length > 1) {
-            String varsPart = parts[1];
-            String[] varLines = varsPart.split("\\r?\\n");
-
-            // 正则表达式：匹配 varName={value1'value2'value3}
-            Pattern pattern = Pattern.compile("^([^=]+)=\\{((?:[^'}]+')*[^'}]+)}$");
-
-            for (String line : varLines) {
-                line = line.trim();
-                if (line.isEmpty()) {
-                    continue;
-                }
-
-                Matcher matcher = pattern.matcher(line);
-                if (matcher.matches()) {
-                    String varName = matcher.group(1).trim();
-                    String valuesStr = matcher.group(2);
-
-                    // 分割值（用单引号作为分隔符）
-                    String[] values = valuesStr.split("'");
-                    Set<String> valueSet = new HashSet<>();
-
-                    for (String value : values) {
-                        value = value.trim();
-                        if (!value.isEmpty()) {
-                            valueSet.add(value);
-                        }
-                    }
-
-                    vars.put(varName, valueSet);
-                }
-            }
-        }
-    }
-
-    /**
      * 获取评论模板集合
      *
      * @return 评论模板集合
@@ -223,36 +160,4 @@ public class RandomComment {
         return selectedValue;
     }
 
-    /**
-     * 测试方法
-     * <p>
-     * 演示如何使用 RandomComment 类生成随机评论
-     */
-    static void main() {
-        String testInput = """
-                           评论模板1:sticker;:var1;
-                           :sticker;:var2;评论模板2
-                           {{{{{{
-                           sticker={[星星眼]'[打call]'[滑稽]'[妙啊]'[嗑瓜子]'[呲牙]'[大笑]'[偷笑]'[鼓掌]'[嘘声]'[捂眼]'[惊喜]'[哈欠]'[抓狂]}
-                           var1={:var2;'①}
-                           var2={②}
-                           """;
-
-        RandomComment rcf = new RandomComment(testInput);
-
-        System.out.println("templates:");
-        for (String template : rcf.getTemplates()) {
-            System.out.println("  " + template);
-        }
-
-        System.out.println("\nVariables:");
-        for (Map.Entry<String, Set<String>> entry : rcf.getVars().entrySet()) {
-            System.out.println("  " + entry.getKey() + " = " + entry.getValue());
-        }
-
-        System.out.println("\n生成的随机评论示例:");
-        for (int i = 0; i < 100; i++) {
-            System.out.println("  " + (i + 1) + ". " + rcf.generate());
-        }
-    }
 }
