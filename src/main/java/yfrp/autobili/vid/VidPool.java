@@ -4,7 +4,12 @@ import javax.annotation.Nullable;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Predicate;
 
 /**
@@ -15,9 +20,11 @@ import java.util.function.Predicate;
 public class VidPool {
 
     // 视频池，存储视频 BV 号
-    private final Set<String> vidPool = new HashSet<>();
+    private final Set<String> vidPool = ConcurrentHashMap.newKeySet();
     // 文件名
     private final String filename;
+    // 用于保护文件 IO 操作的锁对象
+    private final Object fileLock = new Object();
 
     /**
      * 构造函数
@@ -58,14 +65,14 @@ public class VidPool {
      */
     @Nullable
     public String getVidFromPool() {
-        if (vidPool.isEmpty()) {
+
+        String[] snapshot = vidPool.toArray(new String[0]);
+        if (snapshot.length == 0) {
             return null;
         }
 
-        return vidPool.stream()
-                .skip(new Random().nextInt(vidPool.size()))
-                .findFirst()
-                .orElse(null);
+        int index = ThreadLocalRandom.current().nextInt(snapshot.length);
+        return snapshot[index];
     }
 
     /**
@@ -83,8 +90,9 @@ public class VidPool {
      * @param bvids 视频 BV 号数组
      */
     public void add(String... bvids) {
-
-        vidPool.addAll(Arrays.asList(bvids));
+        if (bvids != null) {
+            vidPool.addAll(Arrays.asList(bvids));
+        }
     }
 
     /**
@@ -93,8 +101,9 @@ public class VidPool {
      * @param bvids 视频 BV 号集合
      */
     public void addAll(Collection<String> bvids) {
-
-        vidPool.addAll(bvids);
+        if (bvids != null) {
+            vidPool.addAll(bvids);
+        }
     }
 
     /**
@@ -103,10 +112,15 @@ public class VidPool {
      * @param bvids 视频 BV 号数组
      */
     public void remove(String... bvids) {
-
-        for (var bv : bvids) {
-            vidPool.removeIf(line -> line.equals(bv) || line.contains(bv));
+        if (bvids == null || vidPool.isEmpty()) {
+            return;
         }
+
+        Set<String> targets = Set.of(bvids);
+
+        vidPool.removeIf(line ->
+                targets.contains(line) ||
+                targets.stream().anyMatch(line::contains));
     }
 
     /**
@@ -125,8 +139,21 @@ public class VidPool {
      * @return 是否包含该视频
      */
     public boolean hasVid(String bvid) {
-        return vidPool.stream()
-                .anyMatch(line -> line.equals(bvid) || line.contains(bvid));
+        if (bvid == null || vidPool.isEmpty()) {
+            return false;
+        }
+
+        if (vidPool.contains(bvid)) {
+            return true;
+        }
+
+        for (var line : vidPool) {
+            if (line.contains(bvid)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -134,16 +161,19 @@ public class VidPool {
      */
     public void saveVideos() {
 
-        try (FileWriter fileWriter = new FileWriter(filename);
-             BufferedWriter bufferedWriter = new BufferedWriter(fileWriter)) {
+        synchronized (fileLock) {
 
-            for (String bv : vidPool) {
-                bufferedWriter.write(bv);
-                bufferedWriter.newLine();
+            try (FileWriter fileWriter = new FileWriter(filename);
+                 BufferedWriter bufferedWriter = new BufferedWriter(fileWriter)) {
+
+                for (String bv : vidPool) {
+                    bufferedWriter.write(bv);
+                    bufferedWriter.newLine();
+                }
+
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
-
-        } catch (IOException e) {
-            throw new RuntimeException(e);
         }
     }
 
@@ -161,17 +191,10 @@ public class VidPool {
             return;
         }
 
-        try (FileReader fileReader = new FileReader(filename);
-             BufferedReader bufferedReader = new BufferedReader(fileReader)) {
-
+        synchronized (fileLock) {
+            List<String> lines = Files.readAllLines(path);
             vidPool.clear();
-            String line;
-            while ((line = bufferedReader.readLine()) != null) {
-                vidPool.add(line);
-            }
-
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+            vidPool.addAll(lines);
         }
     }
 
