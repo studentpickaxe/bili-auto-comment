@@ -4,11 +4,9 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import yfrp.autobili.browser.ChromeOptionUtil;
+import yfrp.autobili.browser.ChromeUtil;
 import yfrp.autobili.config.Config;
 
 import java.util.ArrayList;
@@ -33,7 +31,7 @@ public class SearchWorker implements Runnable {
     // 已评论视频池
     private final VidPool commented;
 
-    // 搜索关键词列表
+    // 搜索关键词列表实例
     private final List<String> keywords;
     // 当前关键词索引
     private int keywordIndex = 0;
@@ -59,17 +57,10 @@ public class SearchWorker implements Runnable {
         this.config = config;
         this.toComment = toComment;
         this.commented = commented;
-        this.keywords = config.getSearchKeywords();
+        this.keywords = config.getSearchKeywordsInstance();
 
-        // 配置 Chrome 浏览器选项
-        ChromeOptions options = new ChromeOptions();
-        ChromeOptionUtil.makeLightweight(options);
-        ChromeOptionUtil.setProfile(options, "search");
-
-        // 启动浏览器
-        this.driver = new ChromeDriver(options);
+        launchDriver();
         LOGGER.info("搜索浏览器已启动");
-        driver.get(config.getUrlHomepage());
     }
 
     /**
@@ -123,18 +114,19 @@ public class SearchWorker implements Runnable {
     private synchronized void recoverDriver() {
         close();
         try {
-            // 配置 Chrome 浏览器选项
-            ChromeOptions options = new ChromeOptions();
-            ChromeOptionUtil.makeLightweight(options);
-            ChromeOptionUtil.setProfile(options, "search");
-
-            // 重新启动浏览器
-            driver = new ChromeDriver(options);
-            driver.get(config.getUrlHomepage());
-            LOGGER.info("浏览器已恢复");
+            launchDriver();
+            LOGGER.info("搜索浏览器已恢复");
         } catch (Exception e) {
-            LOGGER.error("浏览器恢复失败", e);
+            LOGGER.error("搜索浏览器恢复失败", e);
         }
+    }
+
+    /**
+     * 启动搜索浏览器
+     */
+    private void launchDriver() {
+        driver = ChromeUtil.getHeadlessDriver();
+        driver.get(config.getUrlHomepage());
     }
 
     /**

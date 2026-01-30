@@ -145,8 +145,8 @@ public class Config {
     // 搜索配置
     private boolean searchEnabled;
     private int searchInterval;
-    // 搜索关键词列表
-    private final List<String> searchKeywords = new ArrayList<>();
+    // 搜索关键词列表实例
+    private final List<String> searchKeywordsInstance = new ArrayList<>();
 
     // 评论配置
     private int commentInterval;
@@ -275,8 +275,8 @@ public class Config {
         ));
         // 随机化关键词顺序
         Collections.shuffle(keywords, new Random(SEED));
-        this.searchKeywords.clear();
-        this.searchKeywords.addAll(keywords);
+        this.searchKeywordsInstance.clear();
+        this.searchKeywordsInstance.addAll(keywords);
 
         // 解析评论配置
         Map<String, Object> commentMap = getMap(config, "comment");
@@ -425,8 +425,8 @@ public class Config {
      *
      * @return 搜索关键词列表
      */
-    public List<String> getSearchKeywords() {
-        return searchKeywords;
+    public List<String> getSearchKeywordsInstance() {
+        return searchKeywordsInstance;
     }
 
     /**
