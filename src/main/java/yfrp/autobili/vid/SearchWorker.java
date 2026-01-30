@@ -82,7 +82,7 @@ public class SearchWorker implements Runnable {
                 searchOnce(keyword);
 
                 // 等待下一次搜索
-                Thread.sleep(config.getCommentInterval() *
+                Thread.sleep(config.getSearchInterval() *
                              new Random().nextLong(750, 1251));
 
             } catch (InterruptedException e) {
