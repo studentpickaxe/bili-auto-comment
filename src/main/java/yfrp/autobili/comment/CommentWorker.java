@@ -274,7 +274,7 @@ public class CommentWorker implements Runnable {
                 // 评论处理
                 if (cooldownEndTime < now()) {
 
-                    // 将最多3个视频添加到队列
+                    // 将最多 3 个视频添加到队列
                     for (int i = 0; i < 3; i++) {
                         if (toComment.isEmpty()) {
                             break;
