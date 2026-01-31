@@ -110,15 +110,14 @@ public class AutoComment {
      * @param driver WebDriver 实例
      * @param bvid   视频 BV 号
      * @return 评论是否发送成功
-     * @throws InterruptedException     线程中断异常
-     * @throws CommentCooldownException 评论冷却异常
+     * @throws InterruptedException 线程中断异常
+     * @throws CommentException     评论异常
      */
     public boolean comment(WebDriver driver,
                            String bvid,
                            String url)
             throws InterruptedException,
-                   CommentCooldownException,
-                   NotLoggedInException {
+                   CommentException {
 
         // 生成评论内容
         var comment = commentFormat.generate();
@@ -154,15 +153,14 @@ public class AutoComment {
      * @param wait        等待对象
      * @param commentText 评论内容
      * @return 评论是否发送成功
-     * @throws InterruptedException     线程中断异常
-     * @throws CommentCooldownException 评论冷却异常
+     * @throws InterruptedException 线程中断异常
+     * @throws CommentException     评论异常
      */
     private boolean sendComment(WebDriver driver,
                                 WebDriverWait wait,
                                 String commentText)
             throws InterruptedException,
-                   CommentCooldownException,
-                   NotLoggedInException {
+                   CommentException {
 
         // 设置 Toast 监视器
         ((JavascriptExecutor) driver).executeScript(SCRIPT_CHECK_TOAST);
@@ -183,14 +181,13 @@ public class AutoComment {
      * 通过检查 Toast 消息来判断评论是否发送成功
      *
      * @param driver WebDriver 实例
-     * @throws InterruptedException     线程中断异常
-     * @throws CommentCooldownException 评论冷却异常
+     * @throws InterruptedException 线程中断异常
+     * @throws CommentException     评论异常
      */
     @SuppressWarnings("unchecked")
     private void checkCommentToast(WebDriver driver)
             throws InterruptedException,
-                   CommentCooldownException,
-                   NotLoggedInException {
+                   CommentException {
 
         // 最多检查10次，每次间隔500ms
         for (int i = 0; i < 10; i++) {

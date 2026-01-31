@@ -6,7 +6,7 @@ package yfrp.autobili.comment;
  * 当被强制退出登录时抛出此异常
  */
 public class NotLoggedInException
-        extends Exception {
+        extends CommentException {
 
     /**
      * 构造一个无参数的未登录异常
