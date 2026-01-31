@@ -25,7 +25,7 @@ public class AutoComment {
     private final Config config;
 
     // 等待元素超时时间（秒）
-    private static final int TIMEOUT = 15;
+    private static final int TIMEOUT = 30;
 
     // 评论格式生成器
     private RandomComment commentFormat = null;
@@ -262,7 +262,8 @@ public class AutoComment {
             // 最多重试3次
             while (true) {
                 // 执行 JavaScript 向评论框发送评论内容
-                var success = (boolean) js.executeScript(SCRIPT_SEND_COMMENT, biliComments, commentText);
+                var result = js.executeScript(SCRIPT_SEND_COMMENT, biliComments, commentText);
+                var success = (result != null) && (boolean) result;
                 if (success) {
                     break;
                 }
