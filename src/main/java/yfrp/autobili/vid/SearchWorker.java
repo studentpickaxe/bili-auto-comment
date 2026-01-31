@@ -81,14 +81,6 @@ public class SearchWorker implements Runnable {
                 // 执行一次搜索
                 searchOnce(keyword);
 
-                // 等待下一次搜索
-                Thread.sleep(config.getSearchInterval() *
-                             new Random().nextLong(750, 1251));
-
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
-
             } catch (WebDriverException e) {
                 if (accepting) {
                     LOGGER.warn("搜索浏览器被关闭，尝试恢复: {}", e.getMessage());
@@ -99,6 +91,16 @@ public class SearchWorker implements Runnable {
                 if (accepting) {
                     LOGGER.error("搜索线程异常", e);
                 }
+            }
+
+            try {
+                // 等待下一次搜索
+                Thread.sleep(config.getSearchInterval() *
+                             new Random().nextLong(750, 1251));
+
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
             }
         }
 

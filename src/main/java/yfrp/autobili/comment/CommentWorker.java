@@ -288,14 +288,6 @@ public class CommentWorker implements Runnable {
                     comment();
                 }
 
-                // 等待下一次评论
-                Thread.sleep(config.getCommentInterval() *
-                             new Random().nextLong(750, 1251));
-
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
-
             } catch (WebDriverException e) {
                 if (accepting) {
                     LOGGER.warn("评论浏览器被关闭，尝试恢复: {}", e.getMessage());
@@ -306,6 +298,16 @@ public class CommentWorker implements Runnable {
                 if (accepting) {
                     LOGGER.error("评论线程异常", e);
                 }
+            }
+
+            try {
+                // 等待下一次评论
+                Thread.sleep(config.getCommentInterval() *
+                             new Random().nextLong(750, 1251));
+
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
             }
         }
 
