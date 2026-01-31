@@ -1,4 +1,4 @@
-package yfrp.autobili.browser;
+package yfrp.autobili.util;
 
 import org.openqa.selenium.Cookie;
 import org.openqa.selenium.WebDriver;
@@ -10,8 +10,9 @@ import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
-import java.util.function.Consumer;
 
 public class ChromeUtil {
 
@@ -19,9 +20,13 @@ public class ChromeUtil {
 
     private static final String COOKIE_FILE = "cookies.txt";
 
+    private static final Set<WebDriver> ACTIVE_DRIVERS = Collections.synchronizedSet(new HashSet<>());
+
 
     public static ChromeDriver getHeadlessDriver() {
-        return new ChromeDriver(getHeadlessOptions());
+        ChromeDriver driver = new ChromeDriver(getHeadlessOptions());
+        ACTIVE_DRIVERS.add(driver); // 追踪驱动实例
+        return driver;
     }
 
     private static ChromeOptions getHeadlessOptions() {
@@ -58,13 +63,37 @@ public class ChromeUtil {
         return options;
     }
 
-    public static void withHeadlessDriver(Consumer<WebDriver> action) {
+    /**
+     * 彻底销毁所有已创建且未关闭的驱动进程
+     */
+    public static void cleanupAllDrivers() {
+        synchronized (ACTIVE_DRIVERS) {
 
-        var driver = getHeadlessDriver();
-        try {
-            action.accept(driver);
-        } finally {
-            driver.quit();
+            var it = ACTIVE_DRIVERS.iterator();
+            while (it.hasNext()) {
+                WebDriver driver = it.next();
+                try {
+                    driver.quit();
+                } catch (Exception _) {
+                }
+                it.remove();
+            }
+
+        }
+    }
+
+    /**
+     * 关闭并移除指定的驱动实例
+     *
+     * @param driver WebDriver 实例
+     */
+    public static void quitDriver(WebDriver driver) {
+        if (driver != null) {
+            ACTIVE_DRIVERS.remove(driver);
+            try {
+                driver.quit();
+            } catch (Exception _) {
+            }
         }
     }
 

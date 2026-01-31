@@ -6,8 +6,8 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebDriverException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import yfrp.autobili.browser.ChromeUtil;
-import yfrp.autobili.browser.Login;
+import yfrp.autobili.util.ChromeUtil;
+import yfrp.autobili.util.Login;
 import yfrp.autobili.config.Config;
 import yfrp.autobili.vid.BiliApi;
 import yfrp.autobili.vid.VidPool;
@@ -83,7 +83,6 @@ public class CommentWorker implements Runnable {
         this.toComment = toComment;
         this.commented = commented;
 
-        launchDriver();
         LOGGER.info("评论浏览器已启动");
     }
 
@@ -253,6 +252,7 @@ public class CommentWorker implements Runnable {
      */
     @Override
     public void run() {
+        launchDriver();
         this.workerThread = Thread.currentThread();
 
         while (accepting) {
@@ -430,7 +430,7 @@ public class CommentWorker implements Runnable {
     public synchronized void close() {
         if (driver != null) {
             try {
-                driver.quit();
+                ChromeUtil.quitDriver(driver);
                 driver = null;
                 LOGGER.info("评论浏览器已关闭");
             } catch (Exception _) {

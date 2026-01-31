@@ -6,7 +6,7 @@ import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import yfrp.autobili.browser.ChromeUtil;
+import yfrp.autobili.util.ChromeUtil;
 import yfrp.autobili.config.Config;
 
 import java.util.ArrayList;
@@ -59,7 +59,6 @@ public class SearchWorker implements Runnable {
         this.commented = commented;
         this.keywords = config.getSearchKeywordsInstance();
 
-        launchDriver();
         LOGGER.info("搜索浏览器已启动");
     }
 
@@ -70,6 +69,7 @@ public class SearchWorker implements Runnable {
      */
     @Override
     public void run() {
+        launchDriver();
         this.workerThread = Thread.currentThread();
 
         while (accepting) {
@@ -234,7 +234,7 @@ public class SearchWorker implements Runnable {
     public synchronized void close() {
         if (driver != null) {
             try {
-                driver.quit();
+                ChromeUtil.quitDriver(driver);
                 driver = null;
                 LOGGER.info("搜索浏览器已关闭");
             } catch (Exception _) {

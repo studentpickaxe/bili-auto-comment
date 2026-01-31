@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import yfrp.autobili.comment.CommentWorker;
 import yfrp.autobili.config.Config;
+import yfrp.autobili.util.ChromeUtil;
 import yfrp.autobili.vid.SearchWorker;
 import yfrp.autobili.vid.VidPool;
 
@@ -163,6 +164,8 @@ public class AutoBili {
             // 如果等待被中断，恢复中断状态
             Thread.currentThread().interrupt();
         }
+
+        ChromeUtil.cleanupAllDrivers();
 
         LOGGER.info("服务已关闭\n\n");
     }
